@@ -41,6 +41,8 @@ lr_scheduler:
         step_size: 10           # 예) StepLR / 학습률 감소 주기 (필수)
         gamma: 0.1              # 예) StepLR 등 / 학습률 감소 비율
 
+metrics: [ MSELoss, MAELoss, RMSELoss ]
+
 train:
     epochs: 20                          # 학습 에폭 수
     log_dir: saved/log                  # 로그 저장 경로
