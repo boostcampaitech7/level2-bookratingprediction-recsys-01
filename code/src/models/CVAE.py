@@ -2,17 +2,17 @@ import torch
 import torch.nn as nn
 
 class CVAE(nn.Module):
-    def __init__(self, num_items, hidden_dim, latent_dim):
+    def __init__(self, args, data):
         super(CVAE, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(num_items, hidden_dim),
+            nn.Linear(args.num_items, args.hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, latent_dim * 2)
+            nn.Linear(args.hidden_dim, args.latent_dim * 2)
         )
         self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
+            nn.Linear(args.latent_dim, args.hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, num_items)
+            nn.Linear(args.hidden_dim, args.num_items)
         )
 
     def reparameterize(self, mu, log_var):
