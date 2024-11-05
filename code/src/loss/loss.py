@@ -13,11 +13,9 @@ class RMSELoss(nn.Module):
         return loss
     
 class MSE_KLDLoss(nn.Module):
-    def __init__(self, mu, log_var):
+    def __init__(self):
         super(MSE_KLDLoss, self).__init__()
-        self.mu = mu
-        self.log_var = log_var
-    def forward(self, x, y):
+    def forward(self, x, y, mu, log_var):
         MSE = nn.functional.mse_loss(x, y, reduction='sum')
-        KLD = -0.5 * torch.sum(1 + self.log_var - self.mu.pow(2) - self.log_var.exp())
+        KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
         return MSE + KLD

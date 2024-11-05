@@ -15,8 +15,10 @@ model_args:
     CVAE:
         datatype : context
         loss : MSE_KLDLoss
-        latent_dim : 50
-        hidden_dim : 100
+        latent_dim : 32
+        hidden_dim : 64
+        embed_dim: 16
+        batch_size : 1024
 
 dataset:
     data_path: ../data/    # 데이터셋 경로
