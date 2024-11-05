@@ -1,2 +1,3 @@
 data/**
 code/saved/
+__pycache__/
