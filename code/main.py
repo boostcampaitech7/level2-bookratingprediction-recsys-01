@@ -23,6 +23,11 @@ def main(args, wandb=None):
     print(f'--------------- {args.model} Load Data ---------------')
     data = data_load_fn(args)
 
+    # CVAE 모델을 사용할 경우 : num_items 인자 추가
+    if args.model == 'CVAE':
+        num_items = pd.concat([data['train'], data['test']])['isbn'].nunique()
+        args.model_args[args.model]['num_items'] = num_items
+
     print(f'--------------- {args.model} Train/Valid Split ---------------')
     data = data_split_fn(args, data)
     data = data_loader_fn(args, data)
@@ -41,9 +46,6 @@ def main(args, wandb=None):
     print(f'--------------- INIT {args.model} ---------------')
     # models > __init__.py 에 저장된 모델만 사용 가능
     # model = FM(args.model_args.FM, data).to('cuda')와 동일한 코드
-    if args.model == 'CVAE':
-        num_items = data['isbn'].nunique()
-        args.model_args[args.model]['num_items'] = num_items
     model = getattr(model_module, args.model)(args.model_args[args.model], data).to(args.device)
 
     # 만일 기존의 모델을 불러와서 학습을 시작하려면 resume을 true로 설정하고 resume_path에 모델을 지정하면 됨
