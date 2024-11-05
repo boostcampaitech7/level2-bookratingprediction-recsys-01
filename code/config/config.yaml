@@ -13,6 +13,8 @@ run_name: 'jinnk0 : VAE_test'            # wandb 실행 이름. 빈 문자열일
 
 model_args:
     VAE:
+        latent_dim : 50
+        hiddent_dim : 100
 
 dataset:
     data_path: ../data/    # 데이터셋 경로
