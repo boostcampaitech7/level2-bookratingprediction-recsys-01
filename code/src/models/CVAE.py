@@ -17,7 +17,7 @@ class CVAE(nn.Module):
             batchnorm=args.cnn_batchnorm,                  # default: True
             dropout=args.cnn_dropout                       # default: 0.2
         )
-        self.input_dim += self.cnn.output_dim[0]
+        self.input_dim += torch.prod(torch.tensor(self.cnn.output_dim[1:]))
         self.encoder = nn.Sequential(
             nn.Linear(self.input_dim, args.hidden_dim),
             nn.ReLU(),
@@ -39,6 +39,7 @@ class CVAE(nn.Module):
         x = self.embedding(x)
         x = x.view(x.size(0), -1)
         image_features = self.cnn(images)
+        image_features = image_features.view(image_features.size(0), -1)
         combined_input = torch.cat([x, image_features], dim=1)
         h = self.encoder(combined_input.float())
         mu, log_var = torch.chunk(h, 2, dim=1)
