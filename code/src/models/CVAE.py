@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from ._helpers import FeaturesEmbedding
+from ._helpers import FeaturesEmbedding, CNN_Base
 
 class CVAE(nn.Module):
     def __init__(self, args, data):
@@ -8,6 +8,16 @@ class CVAE(nn.Module):
         self.field_dims = data['field_dims']
         self.embedding = FeaturesEmbedding(self.field_dims, args.embed_dim)
         self.input_dim = len(self.field_dims) * args.embed_dim
+        self.cnn = CNN_Base(
+            input_size=(3, args.img_size, args.img_size),  # default: (3, 224, 224)
+            channel_list=args.channel_list,                # default: [4, 8, 16]
+            kernel_size=args.kernel_size,                  # default: 3
+            stride=args.stride,                            # default: 2
+            padding=args.padding,                          # default: 1
+            batchnorm=args.cnn_batchnorm,                  # default: True
+            dropout=args.cnn_dropout                       # default: 0.2
+        )
+        self.input_dim += self.cnn.output_dim[0]
         self.encoder = nn.Sequential(
             nn.Linear(self.input_dim, args.hidden_dim),
             nn.ReLU(),
@@ -25,9 +35,12 @@ class CVAE(nn.Module):
         return mu + eps * std
     
     def forward(self, x):
+        x, images = x[0], x[1]
         x = self.embedding(x)
         x = x.view(x.size(0), -1)
-        h = self.encoder(x.float())
+        image_features = self.cnn(images)
+        combined_input = torch.cat([x, image_features], dim=1)
+        h = self.encoder(combined_input.float())
         mu, log_var = torch.chunk(h, 2, dim=1)
         z = self.reparameterize(mu, log_var)
         return self.decoder(z), mu, log_var
