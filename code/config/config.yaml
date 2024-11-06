@@ -1,5 +1,5 @@
 memo: |-
-    .
+    context_data 카테고리 부분 조교님 코드로 수정
 
 # 기본 인자
 predict: False  # 예측할 경우 True로 설정
@@ -9,7 +9,7 @@ device: cuda    # 가능한 값 : cpu, cuda, mps
 model: CVAE      # 모델 선택
 wandb: True                               # wandb 사용 여부
 wandb_project: 'lv2.bookratingprediction' # wandb 프로젝트 이름
-run_name: 'jinnk0 : CVAE_test'            # wandb 실행 이름. 빈 문자열일 경우 자동 생성
+run_name: ''            # wandb 실행 이름. 빈 문자열일 경우 자동 생성
 
 model_args:
     CVAE:
@@ -18,7 +18,6 @@ model_args:
         latent_dim : 32
         hidden_dim : 64
         embed_dim: 16
-        batch_size : 1024
 
 dataset:
     data_path: ../data/    # 데이터셋 경로
