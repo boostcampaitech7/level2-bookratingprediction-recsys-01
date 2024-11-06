@@ -19,8 +19,10 @@ def train(args, model, dataloader, logger, setting):
     
     minimum_loss = None
 
-    print(args.model_args[args.model].loss)
-    loss_fn = getattr(loss_module, args.model_args[args.model].loss)().to(args.device)
+    if args.model == 'CVAE':
+        loss_fn = getattr(loss_module, args.model_args[args.model].loss)().to(args.device)
+    else:
+        loss_fn = getattr(loss_module, args.loss)().to(args.device)
     args.metrics = sorted([metric for metric in set(args.metrics) if metric != args.loss])
 
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
