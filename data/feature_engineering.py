@@ -15,7 +15,7 @@ class BookFeatureEngineering:
         Parameters
         ----------
         summary : str
-            text 관련 기본적인 전처리를 하기 위한 텍스트 데이터를 입력합니다.
+            정규화와 같은 기본적인 전처리를 하기 위한 텍스트 데이터를 입력합니다.
         ----------
         """
         summary = re.sub("[.,\'\"!?]", "", summary)  # 불필요한 기호 제거
@@ -143,39 +143,39 @@ class UserFeatureEngineering:
                 # 1. city만 공백인 경우 결측치 대체
                 # country와 state의 group에 따른 최빈값으로 대체
                 city_df = df[df['country'].notna() & df['state'].notna()]
-                city_df['city'] = city_df['city'].fillna(
+                city_df.loc[:, 'city'] = city_df['city'].fillna(
                     city_df.groupby(['country','state'])['city'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan)
                 )
-                city_df['city'] = city_df['city'].fillna(
+                city_df.loc[:, 'city'] = city_df['city'].fillna(
                     city_df.groupby(['country'])['city'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan) 
                 )
-                city_df['city'] = city_df['city'].fillna(
+                city_df.loc[:, 'city'] = city_df['city'].fillna(
                     city_df.groupby(['state'])['city'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
                 # 2. state만 공백인 경우 결측치 대체
                 # country와 city의 group에 따른 최빈값으로 대체
                 state_df = df[df['country'].notna() & df['city'].notna()]
-                state_df['state'] = state_df['state'].fillna(
+                state_df.loc[:, 'state'] = state_df['state'].fillna(
                     state_df.groupby(['country','city'])['state'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan) 
                 )
                 state_df = df[df['country'].notna() & df['city'].notna()]
-                state_df['state'] = state_df['state'].fillna(
+                state_df.loc[:, 'state'] = state_df['state'].fillna(
                     state_df.groupby(['country'])['state'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan)
                 )
                 state_df = df[df['country'].notna() & df['city'].notna()]
-                state_df['state'] = state_df['state'].fillna(
+                state_df.loc[:, 'state'] = state_df['state'].fillna(
                     state_df.groupby(['city'])['state'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
                 # 3. country만 공백인 경우 결측치 대체
                 # state와 city의 group에 따른 최빈값으로 대체
                 coutry_df = df[df['state'].notna() & df['city'].notna()]
-                coutry_df['country'] = coutry_df['country'].fillna(
+                coutry_df.loc[:, 'country'] = coutry_df['country'].fillna(
                     coutry_df.groupby(['state','city'])['country'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan)
                 )
-                coutry_df['country'] = coutry_df['country'].fillna(
+                coutry_df.loc[:, 'country'] = coutry_df['country'].fillna(
                     coutry_df.groupby('state')['country'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan)
                 )
-                coutry_df['country'] = coutry_df['country'].fillna(
+                coutry_df.loc[:, 'country'] = coutry_df['country'].fillna(
                     coutry_df.groupby('city')['country'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
 
@@ -186,29 +186,29 @@ class UserFeatureEngineering:
                 # 4. city와 state가 공백인 경우 결측치 대체
                 # country group에 따른 최빈값으로 대체
                 city_state_df = df[df['country'].notna()]
-                city_state_df['state'] = city_state_df['state'].fillna(
+                city_state_df.loc[:, 'state'] = city_state_df['state'].fillna(
                     city_state_df.groupby('country')['state'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan) 
                 )
-                city_state_df['city'] = city_state_df['city'].fillna(
+                city_state_df.loc[:, 'city'] = city_state_df['city'].fillna(
                     city_state_df.groupby('country')['city'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
 
                 # 5. city와 country가 공백인 경우 결측치 대체
                 # state group에 따른 최빈값으로 대체
                 city_country_df = df[df['state'].notna()]
-                city_country_df['country'] = city_country_df['country'].fillna(
+                city_country_df.loc[:, 'country'] = city_country_df['country'].fillna(
                     city_country_df.groupby('state')['country'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan) 
                 )
-                city_country_df['city'] = city_country_df['city'].fillna(
+                city_country_df.loc[:, 'city'] = city_country_df['city'].fillna(
                     city_country_df.groupby('state')['city'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
                 # 6. state와 country가 공백인 경우 결측치 대체
                 # city group에 따른 최빈값으로 대체
                 state_country_df = df[df['city'].notna()]
-                state_country_df['country'] = state_country_df['country'].fillna(
+                state_country_df.loc[:, 'country'] = state_country_df['country'].fillna(
                     state_country_df.groupby('city')['country'].transform(lambda x: x.mode()[0] if not x.mode().empty else np.nan) 
                 )
-                state_country_df['state'] = state_country_df['state'].fillna(
+                state_country_df.loc[:, 'state'] = state_country_df['state'].fillna(
                     state_country_df.groupby('city')['state'].transform(lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
                 )
                 # 해당 값들로 update 실시
@@ -216,15 +216,15 @@ class UserFeatureEngineering:
                 df.update(city_state_df['city'])
 
                 df.update(city_country_df['state'])
-                df.update(city_country_df['city'] )
+                df.update(city_country_df['city'])
 
-                df.update(state_country_df[['state']])
-                df.update(state_country_df[['country']])
+                df.update(state_country_df['state'])
+                df.update(state_country_df['country'])
                 # 7. 모두 공백인 경우 결측치 대체
                 # 각 column의 최빈값으로 대체
                 for column in ['city','state','country']:
                     mode_value = df[column].mode()[0]
-                    df[column].fillna(mode_value, inplace=True)
+                    df.loc[:, column] = df[column].fillna(mode_value)
                     
                 df.replace('unknown', np.nan, inplace=True)
             
@@ -232,37 +232,38 @@ class UserFeatureEngineering:
             
             # city만 없는 경우
             city_nan_only = df[df['country'].notna() & df['state'].notna() & df['city'].isna()]
-            city_nan_only['city'].fillna(city_nan_only['state'], inplace=True)
+            city_nan_only['city'] = city_nan_only['city'].fillna(city_nan_only['state'])
             df.update(city_nan_only['city'])
 
             # state만 없는 경우
             state_nan_only = df[df['country'].notna() & df['state'].isna() & df['city'].notna()]
-            state_nan_only['state'].fillna(state_nan_only['city'], inplace=True)
+            state_nan_only.loc[:, 'state'] = state_nan_only['state'].fillna(state_nan_only['city'])
             df.update(state_nan_only['state'])
 
             # country만 없는 경우
             country_nan_only = df[df['country'].isna() & df['state'].notna() & df['city'].notna()]
-            country_nan_only['country'].fillna(country_nan_only['state'], inplace=True)
+            country_nan_only.loc[:, 'country'] = country_nan_only['country'].fillna(country_nan_only['state'])
+
             df.update(country_nan_only['country'])
 
             # 4. city와 state가 공백인 경우
             city_state_nan_only = df[df['country'].notna() & df['state'].isna() & df['city'].isna()]
-            city_state_nan_only['city'].fillna(city_state_nan_only['country'], inplace=True)
-            city_state_nan_only['state'].fillna(city_state_nan_only['country'], inplace=True)
+            city_state_nan_only['city'] = city_state_nan_only['city'].fillna(city_state_nan_only['country'])
+            city_state_nan_only['state'] = city_state_nan_only['state'].fillna(city_state_nan_only['country'])
             df.update(city_state_nan_only['city'])
             df.update(city_state_nan_only['state'])
 
             # 5. city와 country가 공백인 경우
             city_country_nan_only = df[df['country'].isna() & df['state'].notna() & df['city'].isna()]
-            city_country_nan_only['city'].fillna(city_country_nan_only['state'], inplace=True)
-            city_country_nan_only['country'].fillna(city_country_nan_only['state'], inplace=True)
+            city_country_nan_only['city'] = city_country_nan_only['city'].fillna(city_country_nan_only['state'])
+            city_country_nan_only['country'] = city_country_nan_only['country'].fillna(city_country_nan_only['state'])
             df.update(city_country_nan_only['city'])
             df.update(city_country_nan_only['country'])
 
             # 6. state와 country가 공백인 경우
             state_country_nan_only = df[df['country'].isna() & df['state'].isna() & df['city'].notna()]
-            state_country_nan_only['state'].fillna(state_country_nan_only['city'], inplace=True)
-            state_country_nan_only['country'].fillna(state_country_nan_only['city'], inplace=True)
+            state_country_nan_only['state'] = state_country_nan_only['state'].fillna(state_country_nan_only['city'])
+            state_country_nan_only['country'] = state_country_nan_only['country'].fillna(state_country_nan_only['city'])
             df.update(state_country_nan_only['state'])
             df.update(state_country_nan_only['country'])
             
@@ -281,9 +282,9 @@ class UserFeatureEngineering:
             common_state = most_common_combo['state'].values[0]
             common_city = most_common_combo['city'].values[0]
 
-            df['country'].fillna(common_country, inplace=True)
-            df['state'].fillna(common_state, inplace=True)
-            df['city'].fillna(common_city, inplace=True)
+            df['country'] = df['country'].fillna(common_country)
+            df['state'] = df['state'].fillna(common_state)
+            df['city'] = df['city'].fillna(common_city)
             
             return df
  
@@ -293,7 +294,7 @@ class UserFeatureEngineering:
         df['age'] = df.groupby(['country', 'state', 'city'])['age'].transform(lambda x: x.fillna(x.mean().round(0) if not pd.isna(x.mean()) else x))
         df['age'] = df.groupby(['country', 'state'])['age'].transform(lambda x: x.fillna(x.mean().round(0) if not pd.isna(x.mean()) else x))
         df['age'] = df.groupby('country')['age'].transform(lambda x: x.fillna(x.mean().round(0) if not pd.isna(x.mean()) else x))
-        df['age'].fillna(df['age'].mean().round(0), inplace=True)
+        df['age'] = df['age'].fillna(df['age'].mean().round(0))
 
 
         return df
@@ -326,13 +327,20 @@ class UserFeatureEngineering:
         over_76_avg_filled = over_76_avg if not np.isnan(over_76_avg) else 76  # Default to 76 if NaN
 
         df.loc[df['age_category'] == "76세 이상", 'age'] = over_76_avg_filled
-        
-        return df   
+        df['age_category'] = df['age_category'].astype('object')
+        return df
     
+    
+    def create_feature_age_country_interaction(self, df):
+        # age와 location(나라)의 cross product feature를 생성
+        df['age_country'] = (df['country'].astype(str) + '_' + df['age_category'].astype(str))
+        df['age_country'] = df['age_country'].astype('object')
+        return df
 
     def final_preprocess(self):
         self.df = self.create_features_location(self.df)  # location 관련 feature 생성
         self.df = self.user_preprocess(self.df)
         self.df = self.create_features_age(self.df) # age 관련 feature 생성
+        self.df = self.create_feature_age_country_interaction(self.df)
         
         return self.df  # 최종 데이터프레임 반환
