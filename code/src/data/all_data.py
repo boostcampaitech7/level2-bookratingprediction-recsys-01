@@ -10,55 +10,9 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModel
 from .basic_data import basic_data_split
-from .feature_engineering import BookFeatureEngineering, UserFeatureEngineering
-
-def str2list(x: str) -> list:
-    '''문자열을 리스트로 변환하는 함수'''
-    return x[1:-1].split(', ')
-
-
-def split_location(x: str) -> list:
-    '''
-    Parameters
-    ----------
-    x : str
-        location 데이터
-
-    Returns
-    -------
-    res : list
-        location 데이터를 나눈 뒤, 정제한 결과를 반환합니다.
-        순서는 country, state, city, ... 입니다.
-    '''
-    res = x.split(',')
-    res = [i.strip().lower() for i in res]
-    res = [regex.sub(r'[^a-zA-Z/ ]', '', i) for i in res]  # remove special characters
-    res = [i if i not in ['n/a', ''] else np.nan for i in res]  # change 'n/a' into NaN
-    res.reverse()  # reverse the list to get country, state, city, ... order
-
-    for i in range(len(res)-1, 0, -1):
-        if (res[i] in res[:i]) and (not pd.isna(res[i])):  # remove duplicated values if not NaN
-            res.pop(i)
-
-    return res
-
-def text_preprocessing(summary):
-    """
-    Parameters
-    ----------
-    summary : pd.Series
-        정규화와 같은 기본적인 전처리를 하기 위한 텍스트 데이터를 입력합니다.
-    
-    Returns
-    -------
-    summary : pd.Series
-        전처리된 텍스트 데이터를 반환합니다.
-        베이스라인에서는 특수문자 제거, 공백 제거를 진행합니다.
-    """
-    summary = re.sub("[^0-9a-zA-Z.,!?]", " ", summary)  # .,!?를 제외한 특수문자 제거
-    summary = re.sub("\s+", " ", summary)  # 중복 공백 제거
-
-    return summary
+from .handler.context_handling import BookProcessor, UserProcessor
+from .handler.text_handling import TextProcessor
+from .handler.image_handling import ImageProcessor
 
 
 def process_context_data(users, books):
@@ -90,38 +44,15 @@ def process_context_data(users, books):
     book_df = books.copy()
     user_df = users.copy()
 
-    book_fe = BookFeatureEngineering(book_df)
-    book_df = book_fe.final_preprocess()
+    book_processor = BookProcessor(book_df)
+    book_df = book_processor.final_process()
 
-    user_fe = UserFeatureEngineering(user_df)
-    user_df = user_fe.final_preprocess()
+    user_processor = UserProcessor(user_df)
+    user_df = user_processor.final_process()
 
     return user_df, book_df
 
-def text_to_vector(text, tokenizer, model):
-    """
-    Parameters
-    ----------
-    text : str
-        `summary_merge()`를 통해 병합된 요약 데이터
-    tokenizer : Tokenizer
-        텍스트 데이터를 `model`에 입력하기 위한 토크나이저
-    model : 사전학습된 언어 모델
-        텍스트 데이터를 벡터로 임베딩하기 위한 모델
-    ----------
-    """
-    text_ = "[CLS] " + text + " [SEP]"
-    tokenized = tokenizer.encode(text_, add_special_tokens=True)
-    token_tensor = torch.tensor([tokenized], device=model.device)
-    with torch.no_grad():
-        outputs = model(token_tensor)  # attention_mask를 사용하지 않아도 됨
-        ### BERT 모델의 경우, 최종 출력물의 사이즈가 (토큰길이, 임베딩=768)이므로, 이를 평균내어 사용하거나 pooler_output을 사용하여 [CLS] 토큰의 임베딩만 사용
-        # sentence_embedding = torch.mean(outputs.last_hidden_state[0], dim=0)  # 방법1) 모든 토큰의 임베딩을 평균내어 사용
-        sentence_embedding = outputs.pooler_output.squeeze(0)  # 방법2) pooler_output을 사용하여 맨 첫 토큰인 [CLS] 토큰의 임베딩만 사용
-    
-    return sentence_embedding.cpu().detach().numpy() 
-
-def process_text_data(ratings, users, books, tokenizer, model, vector_create=False):
+def process_text_data(ratings, users, books, tokenizer, model, model_name, vector_create=False):
     """
     Parameters
     ----------
@@ -140,91 +71,28 @@ def process_text_data(ratings, users, books, tokenizer, model, vector_create=Fal
     `books_` : pd.DataFrame
         텍스트 데이터를 벡터화하여 추가한 데이터 프레임을 반환합니다.
     """
-    num2txt = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five']
-    users_ = users.copy()
-    books_ = books.copy()
-    nan_value = 'None'
-    books_['summary'] = books_['summary'].fillna(nan_value)\
-                                         .apply(lambda x: text_preprocessing(x))\
-                                         .replace({'': nan_value, ' ': nan_value})
-    
-    books_['summary_length'] = books_['summary'].apply(lambda x:len(x))
-    books_['review_count'] = books_['isbn'].map(ratings['isbn'].value_counts())
-
-    users_['books_read'] = users_['user_id'].map(ratings.groupby('user_id')['isbn'].apply(list))
-
-    if vector_create:
-        if not os.path.exists('./data/text_vector'):
-            os.makedirs('./data/text_vector')
-
-        print('Create Item Summary Vector')
-        book_summary_vector_list = []
-        for title, summary in tqdm(zip(books_['book_title'], books_['summary']), total=len(books_)):
-            # 책에 대한 텍스트 프롬프트는 아래와 같이 구성됨
-            # '''
-            # Book Title: {title}
-            # Summary: {summary}
-            # '''
-            prompt_ = f'Book Title: {title}\n Summary: {summary}\n'
-            vector = text_to_vector(prompt_, tokenizer, model)
-            book_summary_vector_list.append(vector)
-        
-        book_summary_vector_list = np.concatenate([
-                                                books_['isbn'].values.reshape(-1, 1),
-                                                np.asarray(book_summary_vector_list, dtype=np.float32)
-                                                ], axis=1)
-        
-        np.save('./data/text_vector/book_summary_vector.npy', book_summary_vector_list)        
-
-
-        print('Create User Summary Merge Vector')
-        user_summary_merge_vector_list = []
-        for books_read in tqdm(users_['books_read']):
-            if not isinstance(books_read, list) and pd.isna(books_read):  # 유저가 읽은 책이 없는 경우, 텍스트 임베딩을 0으로 처리
-                user_summary_merge_vector_list.append(np.zeros((768)))
-                continue
-            
-            read_books = books_[books_['isbn'].isin(books_read)][['book_title', 'summary', 'review_count']]
-            read_books = read_books.sort_values('review_count', ascending=False).head(5)  # review_count가 높은 순으로 5개의 책을 선택
-            # 유저에 대한 텍스트 프롬프트는 아래와 같이 구성됨
-            # DeepCoNN에서 유저의 리뷰를 요약하여 하나의 벡터로 만들어 사용함을 참고 (https://arxiv.org/abs/1701.04783)
-            # '''
-            # Five Books That You Read
-            # 1. Book Title: {title}
-            # Summary: {summary}
-            # ...
-            # 5. Book Title: {title}
-            # Summary: {summary}
-            # '''
-            prompt_ = f'{num2txt[len(read_books)]} Books That You Read\n'
-            for idx, (title, summary) in enumerate(zip(read_books['book_title'], read_books['summary'])):
-                summary = summary if len(summary) < 100 else f'{summary[:100]} ...'
-                prompt_ += f'{idx+1}. Book Title: {title}\n Summary: {summary}\n'
-            vector = text_to_vector(prompt_, tokenizer, model)
-            user_summary_merge_vector_list.append(vector)
-        
-        user_summary_merge_vector_list = np.concatenate([
-                                                         users_['user_id'].values.reshape(-1, 1),
-                                                         np.asarray(user_summary_merge_vector_list, dtype=np.float32)
-                                                        ], axis=1)
-        
-        np.save('./data/text_vector/user_summary_merge_vector.npy', user_summary_merge_vector_list)        
-        
-    else:
-        print('Check Vectorizer')
-        print('Vector Load')
-        book_summary_vector_list = np.load('./data/text_vector/book_summary_vector.npy', allow_pickle=True)
-        user_summary_merge_vector_list = np.load('./data/text_vector/user_summary_merge_vector.npy', allow_pickle=True)
-
-    book_summary_vector_df = pd.DataFrame({'isbn': book_summary_vector_list[:, 0]})
-    book_summary_vector_df['book_summary_vector'] = list(book_summary_vector_list[:, 1:].astype(np.float32))
-    user_summary_vector_df = pd.DataFrame({'user_id': user_summary_merge_vector_list[:, 0]})
-    user_summary_vector_df['user_summary_merge_vector'] = list(user_summary_merge_vector_list[:, 1:].astype(np.float32))
-
-    books_ = pd.merge(books_, book_summary_vector_df, on='isbn', how='left')
-    users_ = pd.merge(users_, user_summary_vector_df, on='user_id', how='left')
+    text_processor = TextProcessor(model_name, tokenizer, model, users, books, ratings, vector_create)
+    users_, books_ = text_processor.process_text_data(ratings, vector_create)
 
     return users_, books_
+
+def process_img_data(books, args):
+    """
+    Parameters
+    ----------
+    books : pd.DataFrame
+        책 정보에 대한 데이터 프레임을 입력합니다.
+    
+    Returns
+    -------
+    books_ : pd.DataFrame
+        이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
+    """
+    books_ = books.copy()
+    image_processor = ImageProcessor(books_, args.model_args[args.model].img_size)
+    books_ = image_processor.process_img_data()
+
+    return books_
 
 class All_Dataset(Dataset):
     def __init__(self, user_book_vector, img_vector, user_summary_vector, book_summary_vector, rating=None):
@@ -260,56 +128,6 @@ class All_Dataset(Dataset):
                 'book_summary_vector' : torch.tensor(self.book_summary_vector[i], dtype=torch.float32),
                 }
 
-
-def image_vector(path, img_size):
-    """
-    Parameters
-    ----------
-    path : str
-        이미지가 존재하는 경로를 입력합니다.
-
-    Returns
-    -------
-    img_fe : np.ndarray
-        이미지를 벡터화한 결과를 반환합니다.
-        베이스라인에서는 grayscale일 경우 RGB로 변경한 뒤, img_size x img_size 로 사이즈를 맞추어 numpy로 반환합니다.
-    """
-    img = Image.open(path)
-    transform = v2.Compose([
-        v2.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x),
-        v2.Resize((img_size, img_size)),
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    return transform(img).numpy()
-
-
-def process_img_data(books, args):
-    """
-    Parameters
-    ----------
-    books : pd.DataFrame
-        책 정보에 대한 데이터 프레임을 입력합니다.
-    
-    Returns
-    -------
-    books_ : pd.DataFrame
-        이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
-    """
-    books_ = books.copy()
-    books_['img_path'] = books_['img_path'].apply(lambda x: f'../data/{x}')
-    img_vecs = []
-    for idx in tqdm(books_.index):
-        img_vec = image_vector(books_.loc[idx, 'img_path'], args.model_args[args.model].img_size)
-        img_vecs.append(img_vec)
-
-    books_['img_vector'] = img_vecs
-
-    return books_
-
-
 def all_data_load(args):
     """
     Parameters
@@ -332,10 +150,11 @@ def all_data_load(args):
 
     users_, books_ = process_context_data(users, books)
 
+    model_name = args.model_args[args.model].pretrained_model
     tokenizer = AutoTokenizer.from_pretrained(args.model_args[args.model].pretrained_model)
     model = AutoModel.from_pretrained(args.model_args[args.model].pretrained_model).to(device=args.device)
     model.eval()
-    users_, books_ = process_text_data(train, users_, books_, tokenizer, model, args.model_args[args.model].vector_create)
+    users_, books_ = process_text_data(train, users_, books_, tokenizer, model, model_name, args.model_args[args.model].vector_create)
 
     # 이미지를 벡터화하여 데이터 프레임에 추가
     books_ = process_img_data(books_, args)
