@@ -35,7 +35,7 @@ model_args:
         vector_create: False
 
 dataset:
-    data_path: ../data/    # 데이터셋 경로
+    data_path: ./data/    # 데이터셋 경로
     valid_ratio: 0.2    # Train / Vaildation split
 
 dataloader:
