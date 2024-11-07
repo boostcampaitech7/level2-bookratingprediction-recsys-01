@@ -6,6 +6,8 @@ import torch
 import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting, train_valid_split
+import torch.optim.lr_scheduler as scheduler_module
+from src.utils import Logger, Setting
 import src.data as data_module
 from src.train import train, test
 import src.models as model_module
