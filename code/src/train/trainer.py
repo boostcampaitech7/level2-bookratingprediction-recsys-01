@@ -42,7 +42,7 @@ def train(args, model, dataloader, logger, setting):
         total_loss, train_len = 0, len(dataloader['train_dataloader'])
 
         for data in tqdm(dataloader['train_dataloader'], desc=f'[Epoch {epoch+1:02d}/{args.train.epochs:02d}]'):
-            if args.model_args[args.model].datatype == 'image':
+            if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'context_image':
                 x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)], data['rating'].to(args.device)
             elif args.model_args[args.model].datatype == 'text':
                 x, y = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
@@ -112,7 +112,7 @@ def valid(args, model, dataloader, loss_fn):
     total_loss = 0
 
     for data in dataloader:
-        if args.model_args[args.model].datatype == 'image':
+        if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'context_image':
             x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)], data['rating'].to(args.device)
         elif args.model_args[args.model].datatype == 'text':
             x, y = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
@@ -145,7 +145,7 @@ def test(args, model, dataloader, setting, checkpoint=None):
     
     model.eval()
     for data in dataloader['test_dataloader']:
-        if args.model_args[args.model].datatype == 'image':
+        if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'context_image':
             x = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)]
         elif args.model_args[args.model].datatype == 'text':
             x = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)]
