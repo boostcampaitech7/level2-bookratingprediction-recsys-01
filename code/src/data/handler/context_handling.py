@@ -6,11 +6,11 @@ import numpy as np
  #### book feature engineering   
 
 
-class BookFeatureEngineering:
+class BookProcessor:
     def __init__(self, book_df):
         self.df = book_df
 
-    def text_preprocessing(self, summary):
+    def text_preprocess(self, summary):
         """
         Parameters
         ----------
@@ -53,14 +53,14 @@ class BookFeatureEngineering:
         return df
 
 
-    def create_features_isbn(self, df):
+    def feature_engineering_isbn(self, df):
         df['isbn_country'] = df["isbn"].apply(lambda x: x[:1])
         df['isbn_publisher'] = df["isbn"].apply(lambda x: x[1:6])
         df['isbn_book'] = df["isbn"].apply(lambda x: x[6:9])
         df['isbn_check'] = df["isbn"].apply(lambda x: x[-1])
         return df
     
-    def create_features_years(self, df):
+    def feature_engineering_years(self, df):
         def preprocess_year(x, weighted_average):
             if x <= 1970:
                 return 1970
@@ -88,17 +88,18 @@ class BookFeatureEngineering:
         return df
     
     
-    def final_preprocess(self):
-        self.df = self.create_features_isbn(self.df)  # ISBN 관련 feature 생성
-        self.df = self.create_features_years(self.df)  # 연도 관련 feature 생성
+    def final_process(self):
+        self.df = self.feature_engineering_isbn(self.df)  # ISBN 관련 feature 생성
+        self.df = self.feature_engineering_years(self.df)  # 연도 관련 feature 생성
         self.df = self.book_preprocess(self.df)
         return self.df  # 최종 데이터프레임 반환
 
     
-    
- ####### user feature engineering   
 
-class UserFeatureEngineering:
+
+
+ ####### user feature engineering   
+class UserProcessor:
     def __init__(self, df):
         self.df = df
 
@@ -299,7 +300,7 @@ class UserFeatureEngineering:
 
         return df
 
-    def create_features_location(self, df):
+    def feature_engineering_location(self, df):
         df['location'] = df['location'].str.replace(r'[^a-zA-Z:,]', '', regex = True)
 
         df['city'] = df['location'].apply(lambda x : x.split(',')[0].strip())
@@ -313,7 +314,7 @@ class UserFeatureEngineering:
         return df
     
     
-    def create_features_age(self, df):
+    def feature_engineering_age(self, df):
         age_bins = [0, 5, 12, 15, 18, 22, 26, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, np.inf]
         age_labels = [
             "0-5세", "6-12세", "13-15세", "16-18세", "19-22세", "23-26세", "27-30세", 
@@ -331,16 +332,16 @@ class UserFeatureEngineering:
         return df
     
     
-    def create_feature_age_country_interaction(self, df):
+    def feature_engineering_age_country_interaction(self, df):
         # age와 location(나라)의 cross product feature를 생성
         df['age_country'] = (df['country'].astype(str) + '_' + df['age_category'].astype(str))
         df['age_country'] = df['age_country'].astype('object')
         return df
 
-    def final_preprocess(self):
-        self.df = self.create_features_location(self.df)  # location 관련 feature 생성
+    def final_process(self):
+        self.df = self.feature_engineering_location(self.df)  # location 관련 feature 생성
         self.df = self.user_preprocess(self.df)
-        self.df = self.create_features_age(self.df) # age 관련 feature 생성
-        self.df = self.create_feature_age_country_interaction(self.df)
+        self.df = self.feature_engineering_age(self.df) # age 관련 feature 생성
+        self.df = self.feature_engineering_age_country_interaction(self.df)
         
         return self.df  # 최종 데이터프레임 반환

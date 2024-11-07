@@ -4,7 +4,7 @@ import regex
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 from .basic_data import basic_data_split
-from .feature_engineering import BookFeatureEngineering, UserFeatureEngineering
+from .handler.context_handling import BookProcessor, UserProcessor
 
 def str2list(x: str) -> list:
     '''문자열을 리스트로 변환하는 함수'''
@@ -45,21 +45,13 @@ def process_context_data(users, books):
         users.csv를 인덱싱한 데이터
     books : pd.DataFrame
         books.csv를 인덱싱한 데이터
-    ratings1 : pd.DataFrame
-        train 데이터의 rating
-    ratings2 : pd.DataFrame
-        test 데이터의 rating
     
     Returns
     -------
-    label_to_idx : dict
-        데이터를 인덱싱한 정보를 담은 딕셔너리
-    idx_to_label : dict
-        인덱스를 다시 원래 데이터로 변환하는 정보를 담은 딕셔너리
-    train_df : pd.DataFrame
-        train 데이터
-    test_df : pd.DataFrame
-        test 데이터
+    user_df : pd.DataFrame
+        user data를 전처리한 데이터
+    books : pd.DataFrame
+        book data를 전처리한 데이터
     """
 
     users_ = users.copy()
@@ -69,11 +61,11 @@ def process_context_data(users, books):
     book_df = books.copy()
     user_df = users.copy()
 
-    book_fe = BookFeatureEngineering(book_df)
-    book_df = book_fe.final_preprocess()
+    book_fe = BookProcessor(book_df)
+    book_df = book_fe.final_process()
 
-    user_fe = UserFeatureEngineering(user_df)
-    user_df = user_fe.final_preprocess()
+    user_fe = UserProcessor(user_df)
+    user_df = user_fe.final_process()
 
     return user_df, book_df
 
