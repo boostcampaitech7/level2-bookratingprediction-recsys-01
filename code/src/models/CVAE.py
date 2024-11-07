@@ -9,7 +9,7 @@ class CVAE(nn.Module):
         self.embedding = FeaturesEmbedding(self.field_dims, args.embed_dim)
         self.input_dim = len(self.field_dims) * args.embed_dim
         self.text_embedding = nn.Linear(args.word_dim, args.embed_dim)
-        self.cnn = CNN_Base(
+        self.cnn = CNN_Base( # 이미지 특성 추출
             input_size=(3, args.img_size, args.img_size),  # default: (3, 224, 224)
             channel_list=args.channel_list,                # default: [4, 8, 16]
             kernel_size=args.kernel_size,                  # default: 3
@@ -38,13 +38,21 @@ class CVAE(nn.Module):
     
     def forward(self, x):
         x, images, users_text, books_text = x[0], x[1], x[2], x[3]
+
+        # 피처 임베딩
         x = self.embedding(x)
         x = x.view(x.size(0), -1)
+
+        # 이미지 특성 추출
         image_features = self.cnn(images)
         image_features = image_features.view(image_features.size(0), -1)
+
+        # 텍스트 임베딩
         users_text_features = self.text_embedding(users_text)
         books_text_features = self.text_embedding(books_text)
+
         combined_input = torch.cat([x, image_features, users_text_features, books_text_features], dim=1)
+        
         h = self.encoder(combined_input.float())
         mu, log_var = torch.chunk(h, 2, dim=1)
         z = self.reparameterize(mu, log_var)
