@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from ._helpers import FeaturesEmbedding, CNN_Base, MLP_Base
+from ._helpers import FeaturesEmbedding, CNN_Base
 
 class CVAE(nn.Module):
     def __init__(self, args, data):

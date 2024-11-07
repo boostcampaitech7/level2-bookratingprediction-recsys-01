@@ -49,7 +49,6 @@ def train(args, model, dataloader, logger, setting):
             elif args.model_args[args.model].datatype == 'all':
                 x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
             else:
-                print(type(data), data)
                 x, y = data[0].to(args.device), data[1].to(args.device)
             if args.model == 'CVAE':
                 y_hat, mu, log_var = model(x)

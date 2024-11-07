@@ -72,9 +72,9 @@ def process_text_data(ratings, users, books, tokenizer, model, model_name, vecto
         텍스트 데이터를 벡터화하여 추가한 데이터 프레임을 반환합니다.
     """
     text_processor = TextProcessor(model_name, tokenizer, model, users, books, ratings, vector_create)
-    users_, books_ = text_processor.process_text_data(ratings, vector_create)
+    user_vectors, book_vectors = text_processor.process_text_data(ratings, vector_create)
 
-    return users_, books_
+    return user_vectors, book_vectors
 
 def process_img_data(books, args):
     """
@@ -148,16 +148,19 @@ def all_data_load(args):
     test = pd.read_csv(args.dataset.data_path + 'test_ratings.csv')
     sub = pd.read_csv(args.dataset.data_path + 'sample_submission.csv')
 
-    users_, books_ = process_context_data(users, books)
+    user_df, book_df = process_context_data(users, books)
+
+    # 이미지를 벡터화하여 데이터 프레임에 추가
+    book_df = process_img_data(book_df, args)
 
     model_name = args.model_args[args.model].pretrained_model
     tokenizer = AutoTokenizer.from_pretrained(args.model_args[args.model].pretrained_model)
     model = AutoModel.from_pretrained(args.model_args[args.model].pretrained_model).to(device=args.device)
     model.eval()
-    users_, books_ = process_text_data(train, users_, books_, tokenizer, model, model_name, args.model_args[args.model].vector_create)
+    user_vectors, book_vectors = process_text_data(train, user_df, book_df, tokenizer, model, model_name, args.model_args[args.model].vector_create)
 
-    # 이미지를 벡터화하여 데이터 프레임에 추가
-    books_ = process_img_data(books_, args)
+    book_df = pd.merge(book_df, book_vectors, on='isbn', how='left')
+    user_df = pd.merge(user_df, user_vectors, on='user_id', how='left') 
 
     # 유저 및 책 정보를 합쳐서 데이터 프레임 생성 (단, 베이스라인에서는 user_id, isbn, img_vector만 사용함)
     # 사용할 컬럼을 user_features와 book_features에 정의합니다. (단, 모두 범주형 데이터로 가정)
@@ -165,11 +168,11 @@ def all_data_load(args):
     book_features = ['isbn', 'book_title', 'book_author_preprocessing', 'isbn_country', 'isbn_book', 'isbn_publisher','publisher_preprocessing', 'language', 'category_preprocessing']
     sparse_cols = ['user_id', 'isbn'] + list(set(user_features + book_features) - {'user_id', 'isbn'})
 
-    train_df = train.merge(books_, on='isbn', how='left')\
-                    .merge(users_, on='user_id', how='left')[sparse_cols + ['img_vector', 'user_summary_merge_vector', 'book_summary_vector', 'rating']]
+    train_df = train.merge(book_df, on='isbn', how='left')\
+                    .merge(user_df, on='user_id', how='left')[sparse_cols + ['img_vector', 'user_summary_merge_vector', 'book_summary_vector', 'rating']]
     train_df = train_df.drop(index=train_df.loc[train_df['book_author_preprocessing'].isna()].index)
-    test_df = test.merge(books_, on='isbn', how='left')\
-                  .merge(users_, on='user_id', how='left')[sparse_cols + ['img_vector', 'user_summary_merge_vector', 'book_summary_vector']]
+    test_df = test.merge(book_df, on='isbn', how='left')\
+                  .merge(user_df, on='user_id', how='left')[sparse_cols + ['img_vector', 'user_summary_merge_vector', 'book_summary_vector']]
     all_df = pd.concat([train_df, test_df], axis=0)
 
     # feature_cols의 데이터만 라벨 인코딩하고 인덱스 정보를 저장
