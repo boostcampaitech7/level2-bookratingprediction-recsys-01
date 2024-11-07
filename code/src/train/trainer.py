@@ -159,4 +159,6 @@ def test(args, model, dataloader, setting, checkpoint=None):
         else:
             y_hat = model(x)
             predicts.extend(y_hat.tolist())
+
+    predicts = [max(1, min(10, p)) for p in predicts]
     return predicts

@@ -50,6 +50,18 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         word_dim: 768
         pretrained_model: 'bert-base-uncased'
         vector_create: False
+    NFM: 
+        datatype: context   # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16       # sparse 벡터를 임베딩할 차원
+    NFFM:
+        datatype: context   # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16       # sparse 벡터를 임베딩할 차원
+    DeepFFM:
+        datatype: context   # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16       # sparse 벡터를 임베딩할 차원
+        mlp_dims: [16, 32]  # MLP_Base의 히든 레이어 차원
+        batchnorm: True    # MLP_Base에서 배치 정규화 사용 여부
+        dropout: 0.2        # MLP_Base에서 드롭아웃 비율s
 
 dataset:
     data_path: ./data/    # 데이터셋 경로
