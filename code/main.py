@@ -4,43 +4,28 @@ from omegaconf import OmegaConf
 import pandas as pd
 import torch
 import torch.optim as optimizer_module
-from torch.utils.data import ConcatDataset
 import torch.optim.lr_scheduler as scheduler_module
-from src.utils import Logger, Setting
+from src.utils import Logger, Setting, train_valid_split
 import src.data as data_module
 from src.train import train, test
 import src.models as model_module
 
-import pickle
 
 def main(args, wandb=None):
     Setting.seed_everything(args.seed)
-    print(type(args))
-    print(args.keys())
-    print(args.values())
-    print(args.dataset.data_path)
 
     ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
-
-    context_data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
-    context_data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
-    context_data_loader_fn = getattr(data_module, f'{datatype}_data_loader')  # e.g. basic_data_loader()
+    data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
+    data_loader_fn = getattr(data_module, f'{datatype}_data_loader')  # e.g. basic_data_loader()
 
     print(f'--------------- {args.model} Load Data ---------------')
-    context_data = context_data_load_fn(args)
+    data = data_load_fn(args)
 
     print(f'--------------- {args.model} Train/Valid Split ---------------')
-    context_data = context_data_split_fn(args, context_data)
-    data = context_data_loader_fn(args, context_data)
+    data = train_valid_split(args, data)
+    data = data_loader_fn(args, data)
 
-    # with open("data.pkl", "wb") as f:
-    #     pickle.dump(data, f)
-
-    # # JSON 파일에서 로드
-    # print(f'--------------- {args.model} Load Data ---------------')
-    # with open("data.pkl", "rb") as f:
-    #     data = pickle.load(f)
 
     ####################### Setting for Log
     setting = Setting()
@@ -105,7 +90,7 @@ if __name__ == "__main__":
     arg('--checkpoint', '-ckpt', '--ckpt', type=str, 
         help='학습을 생략할 때 사용할 모델을 설정할 수 있습니다. 단, 하이퍼파라미터 세팅을 모두 정확하게 입력해야 합니다.')
     arg('--model', '-m', '--m', type=str, 
-        choices=['FM', 'FFM', 'DeepFM', 'NCF', 'WDN', 'DCN', 'Image_FM', 'Image_DeepFM', 'Text_FM', 'Text_DeepFM', 'ResNet_DeepFM'],
+        choices=['FM', 'FFM', 'DeepFM', 'NCF', 'WDN', 'DCN', 'Image_FM', 'Image_DeepFM', 'Text_FM', 'Text_DeepFM', 'ResNet_DeepFM', 'CVAE'],
         help='학습 및 예측할 모델을 선택할 수 있습니다.')
     arg('--seed', '-s', '--s', type=int,
         help='데이터분할 및 모델 초기화 시 사용할 시드를 설정할 수 있습니다.')

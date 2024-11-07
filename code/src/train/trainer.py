@@ -19,7 +19,10 @@ def train(args, model, dataloader, logger, setting):
     
     minimum_loss = None
 
-    loss_fn = getattr(loss_module, args.loss)().to(args.device)
+    if args.model == 'CVAE':
+        loss_fn = getattr(loss_module, args.model_args[args.model].loss)().to(args.device)
+    else:
+        loss_fn = getattr(loss_module, args.loss)().to(args.device)
     args.metrics = sorted([metric for metric in set(args.metrics) if metric != args.loss])
 
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
@@ -39,14 +42,20 @@ def train(args, model, dataloader, logger, setting):
         total_loss, train_len = 0, len(dataloader['train_dataloader'])
 
         for data in tqdm(dataloader['train_dataloader'], desc=f'[Epoch {epoch+1:02d}/{args.train.epochs:02d}]'):
-            if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'all':
+            if args.model_args[args.model].datatype == 'image':
                 x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)], data['rating'].to(args.device)
             elif args.model_args[args.model].datatype == 'text':
                 x, y = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
+            elif args.model_args[args.model].datatype == 'all':
+                x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
             else:
                 x, y = data[0].to(args.device), data[1].to(args.device)
-            y_hat = model(x)
-            loss = loss_fn(y_hat, y.float())
+            if args.model == 'CVAE':
+                y_hat, mu, log_var = model(x)
+                loss = loss_fn(y_hat.flatten(), y.float(), mu, log_var)
+            else:
+                y_hat = model(x)
+                loss = loss_fn(y_hat, y.float())
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -59,7 +68,8 @@ def train(args, model, dataloader, logger, setting):
         train_loss = total_loss / train_len
         msg += f'\tTrain Loss ({METRIC_NAMES[args.loss]}): {train_loss:.3f}'
         if args.dataset.valid_ratio != 0:  # valid 데이터가 존재할 경우
-            valid_loss = valid(args, model, dataloader['valid_dataloader'], loss_fn)
+            loss_valid = getattr(loss_module, args.loss)().to(args.device)
+            valid_loss = valid(args, model, dataloader['valid_dataloader'], loss_valid)
             msg += f'\n\tValid Loss ({METRIC_NAMES[args.loss]}): {valid_loss:.3f}'
             if args.lr_scheduler.use and args.lr_scheduler.type == 'ReduceLROnPlateau':
                 lr_scheduler.step(valid_loss)
@@ -102,14 +112,20 @@ def valid(args, model, dataloader, loss_fn):
     total_loss = 0
 
     for data in dataloader:
-        if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'all':
+        if args.model_args[args.model].datatype == 'image':
             x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)], data['rating'].to(args.device)
         elif args.model_args[args.model].datatype == 'text':
             x, y = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
+        elif args.model_args[args.model].datatype == 'all':
+            x, y = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)], data['rating'].to(args.device)
         else:
             x, y = data[0].to(args.device), data[1].to(args.device)
-        y_hat = model(x)
-        loss = loss_fn(y.float(), y_hat)
+        if args.model == 'CVAE':
+            y_hat, _, _ = model(x)
+            loss = loss_fn(y_hat.flatten(), y.float())
+        else:
+            y_hat = model(x)
+            loss = loss_fn(y_hat, y.float())
         total_loss += loss.item()
         
     return total_loss / len(dataloader)
@@ -129,12 +145,18 @@ def test(args, model, dataloader, setting, checkpoint=None):
     
     model.eval()
     for data in dataloader['test_dataloader']:
-        if args.model_args[args.model].datatype == 'image' or args.model_args[args.model].datatype == 'all':
+        if args.model_args[args.model].datatype == 'image':
             x = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device)]
         elif args.model_args[args.model].datatype == 'text':
             x = [data['user_book_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)]
+        elif args.model_args[args.model].datatype == 'all':
+            x = [data['user_book_vector'].to(args.device), data['img_vector'].to(args.device), data['user_summary_vector'].to(args.device), data['book_summary_vector'].to(args.device)]
         else:
             x = data[0].to(args.device)
-        y_hat = model(x)
-        predicts.extend(y_hat.tolist())
+        if args.model == 'CVAE':
+            y_hat, _, _ = model(x)
+            predicts.extend(y_hat.flatten().tolist())
+        else:
+            y_hat = model(x)
+            predicts.extend(y_hat.tolist())
     return predicts

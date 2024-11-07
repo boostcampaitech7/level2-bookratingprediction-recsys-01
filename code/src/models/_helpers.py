@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from numpy import cumsum
 
 
@@ -13,7 +14,6 @@ class FeaturesEmbedding(nn.Module):
         
         self._initialize_weights()
 
-
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Embedding):
@@ -24,7 +24,6 @@ class FeaturesEmbedding(nn.Module):
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
 
         return self.embedding(x)  # (batch_size, num_fields, embed_dim)
-
 
 # FM 계열 모델에서 활용되는 선형 결합 부분을 정의합니다.
 # 사용되는 모델 : FM, FFM, WDN, CNN-FM
@@ -41,7 +40,6 @@ class FeaturesLinear(nn.Module):
     
         self._initialize_weights()
 
-
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Embedding):
@@ -50,14 +48,94 @@ class FeaturesLinear(nn.Module):
             if isinstance(m, nn.Parameter):
                 nn.init.constant_(m, 0)
 
-
     def forward(self, x: torch.Tensor):
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
 
         return torch.sum(self.fc(x), dim=1) + self.bias if hasattr(self, 'bias') \
                else torch.sum(self.fc(x), dim=1)
+    
+#  MLP(initialize 제외)를 구현합니다.
+# 사용되는 모델 : FFMwithDCN
+class MLP_DCNwithFFM(nn.Module):
+    def __init__(self, input_dim, embed_dims, 
+                 batchnorm=True, dropout=0.2, output_layer=False):
+        super().__init__()
+        self.mlp = nn.Sequential()
+        for idx, embed_dim in enumerate(embed_dims):
+            self.mlp.add_module(f'linear{idx}', nn.Linear(input_dim, embed_dim))
+            if batchnorm:
+                self.mlp.add_module(f'batchnorm{idx}', nn.BatchNorm1d(embed_dim))
+            self.mlp.add_module(f'relu{idx}', nn.ReLU())
+            if dropout > 0:
+                self.mlp.add_module(f'dropout{idx}', nn.Dropout(p=dropout))
+            input_dim = embed_dim
+        if output_layer:
+            self.mlp.add_module('output', nn.Linear(input_dim, 1))
+        
+
+    def forward(self, x):
+        """
+        :param x: Float tensor of size ``(batch_size, embed_dim)``
+        """
+        return self.mlp(x)
+    
+class FFMLayer_DCNwithFFM(nn.Module):
+
+    def __init__(self, field_dims: list , embed_dim: int):
+        super().__init__()
+        self.num_fields = len(field_dims)
+        self.feature_dim = sum(field_dims)
+        self.embed_dim = embed_dim
+        
+        self.offsets = [0, *np.cumsum(field_dims)[:-1]]
+
+        self.embeddings = torch.nn.ModuleList([
+            nn.Embedding(self.feature_dim, self.embed_dim) for _ in range(self.num_fields)
+        ])
+        
+        self._initialize_weights()
 
 
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                nn.init.xavier_uniform_(m.weight.data)
+                # nn.init.constant_(m.weight.data, 0)  # cold-start
+
+    def forward(self, x: torch.Tensor):
+        x = x + x.new_tensor(self.offsets).unsqueeze(0)
+        xv = [self.embeddings[f](x) for f in range(self.num_fields)]
+        
+        y = list()
+        for f in range(self.num_fields - 1):
+            for g in range(f + 1, self.num_fields):
+                y.append(xv[f][:, g] * xv[g][:, f])
+        y = torch.stack(y, dim=1)
+
+        return torch.sum(y, dim=(2,1))
+    
+class CrossNetwork_DCNwithFFM(nn.Module):
+
+    def __init__(self, input_dim: int, num_layers: int):
+        super().__init__()
+        self.num_layers = num_layers
+        self.w = torch.nn.ModuleList([
+            torch.nn.Linear(input_dim, 1, bias=False) for _ in range(num_layers)
+        ])
+        self.b = torch.nn.ParameterList([
+            torch.nn.Parameter(torch.zeros((input_dim,))) for _ in range(num_layers)
+        ])
+
+                                  
+    def forward(self, x: torch.Tensor):
+        """
+        :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
+        """
+        x0 = x
+        for i in range(self.num_layers):
+            xw = self.w[i](x)
+            x = x0 * xw + self.b[i] + x
+        return x
 
 # dense feature 사이의 상호작용을 효율적으로 계산합니다.
 # 사용되는 모델 : DeepFM, Image_FM, Image_DeepFM, Text_FM, Text_DeepFM
@@ -69,14 +147,10 @@ class FMLayer_Dense(nn.Module):
         return torch.pow(x,2)
 
     def forward(self, x):
-        # square_of_sum =   # FILL HERE : Use `torch.sum()` and `self.square()` #
-        # sum_of_square =   # FILL HERE : Use `torch.sum()` and `self.square()` #
         square_of_sum = self.square(torch.sum(x, dim=1))
         sum_of_square = torch.sum(self.square(x), dim=1)
         
         return 0.5 * torch.sum(square_of_sum - sum_of_square, dim=1)
-    
-
 
 # sparse feature 사이의 상호작용을 효율적으로 계산합니다.
 # 사용되는 모델 : FM
@@ -86,18 +160,14 @@ class FMLayer_Sparse(nn.Module):
         self.embedding = FeaturesEmbedding(field_dims, factor_dim)
         self.fm = FMLayer_Dense()
 
-
     def square(self, x):
         return torch.pow(x,2)
-    
 
     def forward(self, x: torch.Tensor):
         x = self.embedding(x)
         x = self.fm(x)
         
         return x
-    
-
 
 # 기본적인 형태의 MLP를 구현합니다.
 # 사용되는 모델 : DeepFM, Image_DeepFM, Text_DeepFM, WDN, DCN, NCF
@@ -119,7 +189,6 @@ class MLP_Base(nn.Module):
         
         self._initialize_weights()
 
-
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -129,24 +198,19 @@ class MLP_Base(nn.Module):
                 nn.init.constant_(m.weight.data, 1)
                 nn.init.constant_(m.bias.data, 0)
 
-
     def forward(self, x):
         return self.mlp(x)
-    
-
 
 # 기본적인 형태의 CNN을 정의합니다. 이미지 데이터의 특징을 추출하기 위해 사용됩니다.
 # 사용되는 모델 : Image_FM, Image_DeepFM
 class CNN_Base(nn.Module):
-    def __init__(self, input_size=(3, 28, 28), 
+    def __init__(self, input_size=(3, 64, 64), 
                  channel_list=[8,16,32], kernel_size=3, stride=2, padding=1,
                  dropout=0.2, batchnorm=True):
         super().__init__()
 
         # CNN 구조 : Conv2d -> BatchNorm2d -> ReLU -> Dropout 
         #           -> Conv2d -> BatchNorm2d -> ReLU -> Dropout -> MaxPool2d -> ...
-        # 3 8
-        # 8 16
         self.cnn = nn.Sequential()
         in_channel_list = [input_size[0]] + channel_list[:-1]
         for idx, (in_channel, out_channel) in enumerate(zip(in_channel_list, channel_list)):
@@ -163,7 +227,6 @@ class CNN_Base(nn.Module):
 
         self._initialize_weights()
 
-
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -173,7 +236,6 @@ class CNN_Base(nn.Module):
                 nn.init.constant_(m.weight.data, 1)
                 nn.init.constant_(m.bias.data, 0)
 
-
     def compute_output_shape(self, input_shape):
         x = torch.rand(input_shape)
         for layer in self.cnn:
@@ -181,7 +243,6 @@ class CNN_Base(nn.Module):
 
         return x.size()
         
-
     def forward(self, x):
         x = self.cnn(x)  # (batch_size, out_channel, H, W)
 
