@@ -4,7 +4,7 @@ import torch
 from src.loss import loss as loss_module
 import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
-
+import pandas as pd
 
 METRIC_NAMES = {
     'RMSELoss': 'RMSE',
@@ -13,7 +13,23 @@ METRIC_NAMES = {
 }
 
 def train(args, model, dataloader, logger, setting):
+    if args.ML:
+        cat_features = ['user_id', 'isbn', 'age_category', 'country', 'state', 'city', 'age_country',
+                    'book_title', 'book_author_preprocessing', 'isbn_country', 'isbn_book', 'isbn_publisher',
+                    'publisher_preprocessing', 'language', 'category_preprocessing']
+        embedding_features = ['user_summary_merge_vector', 'book_summary_vector']
 
+        X_all = pd.concat([dataloader['X_train'], dataloader['X_valid']], axis=0)
+        y_all = pd.concat([dataloader['y_train'], dataloader['y_valid']], axis=0)
+
+    
+        model.cbr.fit(X_all, y_all,
+                cat_features=cat_features, embedding_features=embedding_features,
+                verbose = False
+        )
+
+        return model.cbr
+        
     if args.wandb:
         import wandb
     
@@ -108,6 +124,11 @@ def train(args, model, dataloader, logger, setting):
 
 
 def valid(args, model, dataloader, loss_fn):
+    if args.ML:
+        y_hat = model.predict(data=dataloader['X_valid'])
+        loss = loss_fn(y_hat, dataloader['y_valid'].float())
+        return loss
+    
     model.eval()
     total_loss = 0
 
@@ -133,6 +154,11 @@ def valid(args, model, dataloader, loss_fn):
 
 def test(args, model, dataloader, setting, checkpoint=None):
     predicts = list()
+    if args.ML:
+        y_hat = model.predict(data=dataloader['test'])
+        predicts.extend(y_hat.tolist())
+        return predicts
+    
     if checkpoint:
         model.load_state_dict(torch.load(checkpoint, weights_only=True))
     else:

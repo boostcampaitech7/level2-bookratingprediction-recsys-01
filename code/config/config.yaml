@@ -14,7 +14,8 @@ predict: False  # 예측할 경우 True로 설정
 checkpoint: 'saved/checkpoints/FM_best.pt'   # 예측 시 불러올 모델 경로
 seed: 0         # 시드 고정
 device: cuda    # 가능한 값 : cpu, cuda, mps
-model: NCF       # 모델 선택
+model: NCF      # 모델 선택
+ML: True        # ML 모델(catboost) 사용 여부  
 wandb: True                            # wandb 사용 여부
 wandb_project: 'lv2.bookratingprediction' # wandb 프로젝트 이름
 run_name: 'jay : context, image NCF'
@@ -22,10 +23,10 @@ run_name: 'jay : context, image NCF'
 model_args:     # model에 해당하는 파라미터만 실질적으로 사용됩니다.
     NCF:
         datatype: context_image
-        embed_dim: 32       # sparse 벡터를 임베딩할 차원
-        mlp_dims: [32, 64]  # MLP_Base의 히든 레이어 차원
-        batchnorm: True    # MLP_Base에서 배치 정규화 사용 여부
-        dropout: 0.        # MLP_Base에서 드롭아웃 비율
+        embed_dim: 32               # sparse 벡터를 임베딩할 차원
+        mlp_dims: [32, 64]          # MLP_Base의 히든 레이어 차원
+        batchnorm: True             # MLP_Base에서 배치 정규화 사용 여부
+        dropout: 0.                 # MLP_Base에서 드롭아웃 비율
         img_size: 28
         channel_list: [8,16,32]
         kernel_size: 3
@@ -38,30 +39,51 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         latent_dim : 32
         hidden_dim : 64
         embed_dim: 16
-        img_size: 64        # 이미지 전처리를 통해 조정할 이미지 크기 (64 -> 3x64x64)
+        img_size: 64                # 이미지 전처리를 통해 조정할 이미지 크기 (64 -> 3x64x64)
         kernel_size: 3              # CNN_Base에서 사용할 각 레이어의 커널 사이즈
         channel_list: [8, 16, 32]   # CNN_Base에서 사용할 각 레이어의 채널 수
         stride: 2                   # CNN_Base에서 사용할 각 레이어의 스트라이드
         padding: 1                  # CNN_Base에서 사용할 각 레이어의 패딩
-        cnn_batchnorm: True        # CNN_Base에서 배치 정규화 사용 여부
+        cnn_batchnorm: True         # CNN_Base에서 배치 정규화 사용 여부
         cnn_dropout: 0.2            # CNN_Base에서 드롭아웃 비율
-        batchnorm: True        # MLP_Base에서 배치 정규화 사용 여부
+        batchnorm: True             # MLP_Base에서 배치 정규화 사용 여부
         dropout: 0.2
         word_dim: 768
         pretrained_model: 'bert-base-uncased'
         vector_create: False
     NFM: 
-        datatype: context   # basic, context, image, text 중 basic, context 가능
-        embed_dim: 16       # sparse 벡터를 임베딩할 차원
+        datatype: all               # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16               # sparse 벡터를 임베딩할 차원
     NFFM:
-        datatype: context   # basic, context, image, text 중 basic, context 가능
-        embed_dim: 16       # sparse 벡터를 임베딩할 차원
+        datatype: all               # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16               # sparse 벡터를 임베딩할 차원
     DeepFFM:
-        datatype: context   # basic, context, image, text 중 basic, context 가능
-        embed_dim: 16       # sparse 벡터를 임베딩할 차원
-        mlp_dims: [16, 32]  # MLP_Base의 히든 레이어 차원
-        batchnorm: True    # MLP_Base에서 배치 정규화 사용 여부
-        dropout: 0.2        # MLP_Base에서 드롭아웃 비율s
+        datatype: all               # basic, context, image, text 중 basic, context 가능
+        embed_dim: 16               # sparse 벡터를 임베딩할 차원
+        mlp_dims: [16, 32]          # MLP_Base의 히든 레이어 차원
+        batchnorm: True             # MLP_Base에서 배치 정규화 사용 여부
+        dropout: 0.2                # MLP_Base에서 드롭아웃 비율s
+    DCNwithFFM:
+        datatype: context           # basic, context, image, text 중 basic, context 가능
+        dcn_embed_dim: 16   
+        ffm_embed_dim: 16
+        cross_layer_num: 3
+        mlp_dims: [16, 32]  
+        batchnorm: True 
+        dropout: 0.2
+    CatBoost:
+        datatype: text    
+        vector_create: False    
+        embed_dim: 16           
+        pretrained_model: 'bert-base-uncased'   # 텍스트 임베딩에 사용할 사전학습 모델
+        word_dim: 768
+        embed_module: 'Linear'
+        params: {'iterations': 62, 'loss_function':'RMSE', 
+                'task_type':'GPU', 'depth': 10, 'learning_rate': 0.09561643045825612, 
+                'l2_leaf_reg': 6.433777066156716}
+
+
+
 
 dataset:
     data_path: ./data/    # 데이터셋 경로
