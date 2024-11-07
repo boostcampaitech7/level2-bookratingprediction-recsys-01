@@ -3,7 +3,6 @@ import pandas as pd
 import regex
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from .basic_data import basic_data_split
 from .handler.context_handling import BookProcessor, UserProcessor
 
 def str2list(x: str) -> list:
@@ -70,7 +69,7 @@ def process_context_data(users, books):
     return user_df, book_df
 
 
-def new_context_data_load(args):
+def context_data_load(args):
     """
     Parameters
     ----------
@@ -138,12 +137,8 @@ def new_context_data_load(args):
     return data
 
 
-def new_context_data_split(args, data):
-    '''data 내의 학습 데이터를 학습/검증 데이터로 나누어 추가한 후 반환합니다.'''
-    return basic_data_split(args, data)
 
-
-def new_context_data_loader(args, data):
+def context_data_loader(args, data):
     """
     Parameters
     ----------

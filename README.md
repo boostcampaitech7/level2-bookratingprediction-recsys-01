@@ -72,40 +72,47 @@
 ### 디렉토리 구조
 
 ```
-📦 level2-bookratingprediction-recsys-01
-|-- config
-|   |-- config.yaml
-|   |-- sweep_CVAE.yaml
-|-- data
-|   |-- text_vector
-|-- ensemble.py
-|-- main.py
-|-- requirement.txt
-|-- src
-    |-- __init__.py
-    |-- data
-    |   |-- __init__.py
-    |   |-- all_data.py
-    |   |-- context_image.py
-    |   |-- handler
-    |   |   |-- context_handling.py
-    |   |   |-- image_handling.py
-    |   |   |-- text_handling.py
-    |   |-- text_context_data.py
-    |   |-- text_data.py
-    |-- ensembles
-    |-- loss
-    |   |-- loss.py
-    |— models
-    |   |— CVAE.py
-    |   |— DCNwithFFM.py
-    |   |— NCF.py
-    |   |— __init__.py
-    |   |— _helpers.py
-    |— train
-    |   |— __init__.py
-    |   |— trainer.py
-    |— utils.py
+📦level2-bookratingprediction-recsys-01
+ ┣ 📂code
+ ┃ ┣ 📂config
+ ┃ ┃ ┣ 📜config.yaml
+ ┃ ┃ ┗ 📜sweep_CVAE.yaml
+ ┃ ┣ 📂src
+ ┃ ┃ ┣ 📂data
+ ┃ ┃ ┃ ┣ 📂handler
+ ┃ ┃ ┃ ┃ ┣ 📜context_handling.py
+ ┃ ┃ ┃ ┃ ┣ 📜image_handling.py
+ ┃ ┃ ┃ ┃ ┗ 📜text_handling.py
+ ┃ ┃ ┃ ┣ 📜__init__.py
+ ┃ ┃ ┃ ┣ 📜all_data.py
+ ┃ ┃ ┃ ┣ 📜context_data.py
+ ┃ ┃ ┃ ┣ 📜context_image.py
+ ┃ ┃ ┃ ┗ 📜text_data.py
+ ┃ ┃ ┣ 📂ensembles
+ ┃ ┃ ┃ ┗ 📜ensembles.py
+ ┃ ┃ ┣ 📂loss
+ ┃ ┃ ┃ ┗ 📜loss.py
+ ┃ ┃ ┣ 📂models
+ ┃ ┃ ┃ ┣ 📜CVAE.py
+ ┃ ┃ ┃ ┣ 📜CatBoost.py
+ ┃ ┃ ┃ ┣ 📜DCNwithFFM.py
+ ┃ ┃ ┃ ┣ 📜DeepFFM.py
+ ┃ ┃ ┃ ┣ 📜NCF.py
+ ┃ ┃ ┃ ┣ 📜NFFM.py
+ ┃ ┃ ┃ ┣ 📜NFM.py
+ ┃ ┃ ┃ ┣ 📜__init__.py
+ ┃ ┃ ┃ ┗ 📜_helpers.py
+ ┃ ┃ ┣ 📂train
+ ┃ ┃ ┃ ┣ 📜__init__.py
+ ┃ ┃ ┃ ┗ 📜trainer.py
+ ┃ ┃ ┣ 📜__init__.py
+ ┃ ┃ ┗ 📜utils.py
+ ┃ ┣ 📜ensemble.py
+ ┃ ┣ 📜main.py
+ ┃ ┣ 📜requirement.txt
+ ┃ ┗ 📜run_baseline.sh
+ ┣ 📜.gitignore
+ ┗ 📜README.md
 ```
 
 ### Installation with pip
@@ -123,12 +130,15 @@ $ python main.py  -c config/config.yaml  -m CVAE  -w True  -r CVAE_test
 $ python main.py  -c config/config.yaml  -m NFM  -w True 
 
 # NFFM
-python main.py  -c config/config.yaml  -m NFFM  -w True 
+$ python main.py  -c config/config.yaml  -m NFFM  -w True 
 
 # DeepFFM
-python main.py  -c config/config.yaml  -m DeepFFM  -w True
+$ python main.py  -c config/config.yaml  -m DeepFFM  -w True
+
+# DCNwtihFM
+$ python main.py  -c config/cofig.yaml   -m DCNwithFFM -w True
 
 # CatBoost
-python main.py -c config/config.yaml -m CatBoost -w True
+$ python main.py -c config/config.yaml -m CatBoost -w True
 ```
 

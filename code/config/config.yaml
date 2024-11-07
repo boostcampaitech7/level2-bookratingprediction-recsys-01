@@ -52,13 +52,13 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         pretrained_model: 'bert-base-uncased'
         vector_create: False
     NFM: 
-        datatype: all               # context, context_image, text, all 중 context 가능
+        datatype: context           # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
     NFFM:
-        datatype: all               # context, context_image, text, all 중 context 가능
+        datatype: context           # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
     DeepFFM:
-        datatype: all               # context, context_image, text, all 중 context 가능
+        datatype: context           # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
         mlp_dims: [16, 32]          # MLP_Base의 히든 레이어 차원
         batchnorm: True             # MLP_Base에서 배치 정규화 사용 여부
