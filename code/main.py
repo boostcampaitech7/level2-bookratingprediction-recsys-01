@@ -23,24 +23,24 @@ def main(args, wandb=None):
     ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
 
-    # context_data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
-    # context_data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
-    # context_data_loader_fn = getattr(data_module, f'{datatype}_data_loader')  # e.g. basic_data_loader()
+    context_data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
+    context_data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
+    context_data_loader_fn = getattr(data_module, f'{datatype}_data_loader')  # e.g. basic_data_loader()
 
-    # print(f'--------------- {args.model} Load Data ---------------')
-    # context_data = context_data_load_fn(args)
+    print(f'--------------- {args.model} Load Data ---------------')
+    context_data = context_data_load_fn(args)
 
-    # print(f'--------------- {args.model} Train/Valid Split ---------------')
-    # context_data = context_data_split_fn(args, context_data)
-    # data = context_data_loader_fn(args, context_data)
+    print(f'--------------- {args.model} Train/Valid Split ---------------')
+    context_data = context_data_split_fn(args, context_data)
+    data = context_data_loader_fn(args, context_data)
 
     # with open("data.pkl", "wb") as f:
     #     pickle.dump(data, f)
 
-    # JSON 파일에서 로드
-    print(f'--------------- {args.model} Load Data ---------------')
-    with open("data.pkl", "rb") as f:
-        data = pickle.load(f)
+    # # JSON 파일에서 로드
+    # print(f'--------------- {args.model} Load Data ---------------')
+    # with open("data.pkl", "rb") as f:
+    #     data = pickle.load(f)
 
     ####################### Setting for Log
     setting = Setting()
