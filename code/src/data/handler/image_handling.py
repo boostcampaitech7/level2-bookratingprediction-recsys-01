@@ -54,7 +54,7 @@ class ImageProcessor:
             이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
         """
         books_ = self.books.copy()
-        books_['img_path'] = books_['img_path'].apply(lambda x: f'../data/{x}')
+        books_['img_path'] = books_['img_path'].apply(lambda x: f'./data/{x}')
         img_vecs = []
         for idx in tqdm(books_.index):
             img_vec = self.image_vector(books_.loc[idx, 'img_path'])
