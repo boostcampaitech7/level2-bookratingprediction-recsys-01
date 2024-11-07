@@ -38,9 +38,9 @@ class BookProcessor:
         )
         
         # text_preprocessing 적용
-        df["book_title_preprocessing"] = df["book_title"].apply(lambda x: self.text_preprocessing(x))
-        df["book_author_preprocessing"] = df["book_author"].apply(lambda x: self.text_preprocessing(x))
-        df["publisher_preprocessing"] = df["publisher"].apply(lambda x: self.text_preprocessing(x))
+        df["book_title_preprocessing"] = df["book_title"].apply(lambda x: self.text_preprocess(x))
+        df["book_author_preprocessing"] = df["book_author"].apply(lambda x: self.text_preprocess(x))
+        df["publisher_preprocessing"] = df["publisher"].apply(lambda x: self.text_preprocess(x))
         
         # cateory preprocessing(5개 이하인 항목은 others)
         
@@ -48,7 +48,7 @@ class BookProcessor:
 
         category_counts = df['category_preprocessing'].value_counts()
         df['category_preprocessing'] = df['category_preprocessing'].apply(lambda x: x if category_counts[x] >= 5 else 'others')
-        df["category_preprocessing"] = df["category_preprocessing"].apply(lambda x: self.text_preprocessing(x))
+        df["category_preprocessing"] = df["category_preprocessing"].apply(lambda x: self.text_preprocess(x))
 
         return df
 
