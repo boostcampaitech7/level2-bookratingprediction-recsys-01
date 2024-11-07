@@ -6,7 +6,6 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModel
-from .basic_data import basic_data_split
 from .handler.context_handling import BookProcessor, UserProcessor
 from .handler.text_handling import TextProcessor
 
@@ -139,11 +138,6 @@ def text_data_load(args):
             }
     
     return data
-
-
-def text_data_split(args, data):
-    """학습 데이터를 학습/검증 데이터로 나누어 추가한 후 반환합니다."""
-    return basic_data_split(args, data)
 
 
 def text_data_loader(args, data):

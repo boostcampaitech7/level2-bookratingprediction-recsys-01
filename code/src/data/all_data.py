@@ -1,15 +1,7 @@
 import pandas as pd
-import numpy as np
-import re
-import os
-from tqdm import tqdm
-from PIL import Image
-import regex
-from torchvision.transforms import v2
 import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModel
-from .basic_data import basic_data_split
 from .handler.context_handling import BookProcessor, UserProcessor
 from .handler.text_handling import TextProcessor
 from .handler.image_handling import ImageProcessor
@@ -200,11 +192,6 @@ def all_data_load(args):
             }
     
     return data
-
-
-def all_data_split(args, data):
-    """학습 데이터를 학습/검증 데이터로 나누어 추가한 후 반환합니다."""
-    return basic_data_split(args, data)
 
 
 def all_data_loader(args, data):
