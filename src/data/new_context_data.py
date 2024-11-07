@@ -70,7 +70,7 @@ def process_context_data(users, books):
     return user_df, book_df
 
 
-def context_data_load(args):
+def new_context_data_load(args):
     """
     Parameters
     ----------
@@ -138,12 +138,12 @@ def context_data_load(args):
     return data
 
 
-def context_data_split(args, data):
+def new_context_data_split(args, data):
     '''data 내의 학습 데이터를 학습/검증 데이터로 나누어 추가한 후 반환합니다.'''
     return basic_data_split(args, data)
 
 
-def context_data_loader(args, data):
+def new_context_data_loader(args, data):
     """
     Parameters
     ----------

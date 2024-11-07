@@ -11,7 +11,7 @@ from .context_handling import BookProcessor, UserProcessor
 
 
 class TextProcessor:
-    def __init__(self, model_name : str, tokenizer, model, users, books, ratings, vector_create = True):
+    def __init__(self, model_name : str, tokenizer, model, users, books, ratings, vector_create = False):
         """
         Parameters
         ----------
@@ -26,7 +26,6 @@ class TextProcessor:
         books : pd.DataFrame
             책 정보에 대한 데이터프레임.
         """
-        self.model_name = model_name
         self.tokenizer = tokenizer
         self.model = model
         self.users = users
@@ -34,6 +33,10 @@ class TextProcessor:
         self.ratings = ratings
         self.vector_create = vector_create
 
+        try:
+            self.model_name = model_name.split('/')[1]
+        except IndexError:
+            self.model_name = model_name
 
 
     def text_preprocessing(self, summary):
@@ -62,7 +65,7 @@ class TextProcessor:
 
 
 
-    def process_text_data(self, ratings, vector_create=False):
+    def text_process_data(self, ratings, vector_create=False):
         """
         유저와 책 데이터에 대해 텍스트 데이터를 벡터화하고, 요약 정보를 병합합니다.
         """

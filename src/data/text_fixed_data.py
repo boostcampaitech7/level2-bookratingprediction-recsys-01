@@ -46,13 +46,13 @@ class Text_Dataset(Dataset):
                 }
 
 
-def process_text_data(ratings, users, books, tokenizer, model, model_name, vector_create):
-    text_processor = TextProcessor(model_name, tokenizer, model, users, books, ratings, vector_create=True)
-    user_vectors, book_vectors = text_processor.process_text_data(ratings, vector_create=True)
+def process_text_data(args, ratings, users, books, tokenizer, model, model_name):
+    text_processor = TextProcessor(model_name, tokenizer, model, users, books, ratings, args.model_args[args.model].vector_create)
+    user_vectors, book_vectors = text_processor.text_process_data(ratings, args.model_args[args.model].vector_create)
 
     return user_vectors, book_vectors
 
-def text_data_fixed_load(args):
+def text_fixed_data_load(args):
     """
     Parameters
     ----------
@@ -75,11 +75,10 @@ def text_data_fixed_load(args):
     test = pd.read_csv(args.dataset.data_path + 'test_ratings.csv')
     sub = pd.read_csv(args.dataset.data_path + 'sample_submission.csv')
 
-    model_name = args.model_args[args.model].pretrained_model
     tokenizer = AutoTokenizer.from_pretrained(args.model_args[args.model].pretrained_model)
     model = AutoModel.from_pretrained(args.model_args[args.model].pretrained_model).to(device=args.device)
     model.eval()
-    users_summary_vec, books_summary_vec = process_text_data(train, users, books, tokenizer, model, model_name, args.model_args[args.model].vector_create)
+    users_summary_vec, books_summary_vec = process_text_data(args, train, users, books, tokenizer, model, args.model_args[args.model].pretrained_model)
 
     #--------------------------------------------------------------------------------------------------------------------------------------#
     print("Context processing")
@@ -99,18 +98,19 @@ def text_data_fixed_load(args):
 
     #--------------------------------------------------------------------------------------------------------------------------------------#
 
-    # 유저 및 책 정보를 합쳐서 데이터 프레임 생성 (단, 베이스라인에서는 user_id, isbn, user_summary_merge_vector, book_summary_vector만 사용함)
-    # 사용할 컬럼을 user_features와 book_features에 정의합니다. (단, 모두 범주형 데이터로 가정)
-    user_features = ['user_id', 'age_range', 'location_country', 'location_state', 'location_city']
-    book_features = ['isbn', 'book_title', 'book_author', 'publisher', 'language', 'category', 'publication_range']
+    # 유저 및 책 정보를 합쳐서 데이터 프레임 생성
+    # 사용할 컬럼을 user_features와 book_features에 정의 (단, 모두 범주형 데이터로 가정)
+    user_features = ['user_id', 'age_category', 'country', 'state', 'city', 'age_country']
+    book_features = ['isbn', 'book_title', 'book_author_preprocessing', 'isbn_country', 'isbn_book', 'isbn_publisher','publisher_preprocessing', 'language', 'category_preprocessing']
     sparse_cols = ['user_id', 'isbn'] + list(set(user_features + book_features) - {'user_id', 'isbn'}) if args.model == 'NCF' \
                    else user_features + book_features
 
     # 선택한 컬럼만 추출하여 데이터 조인
     train_df = train.merge(user_df, on='user_id', how='left')\
-                    .merge(book_df, on='isbn', how='left')[sparse_cols + ['rating']]
+                    .merge(book_df, on='isbn', how='left')[sparse_cols + ['user_summary_merge_vector', 'book_summary_vector','rating']]
+    train_df = train_df.drop(index=train_df.loc[train_df['book_author_preprocessing'].isna()].index)    
     test_df = test.merge(user_df, on='user_id', how='left')\
-                  .merge(book_df, on='isbn', how='left')[sparse_cols]
+                  .merge(book_df, on='isbn', how='left')[sparse_cols + ['user_summary_merge_vector', 'book_summary_vector']]
     all_df = pd.concat([train_df, test_df], axis=0)
 
     # feature_cols의 데이터만 라벨 인코딩하고 인덱스 정보를 저장
@@ -125,7 +125,7 @@ def text_data_fixed_load(args):
         train_df[col] = pd.Categorical(train_df[col], categories=unique_labels).codes
         test_df[col] = pd.Categorical(test_df[col], categories=unique_labels).codes
     
-    field_dims = [len(label2idx[col]) for col in train_df.columns if col != 'rating']
+    field_dims = [len(label2idx[col]) for col in sparse_cols]
 
 
     data = {
@@ -141,12 +141,12 @@ def text_data_fixed_load(args):
     return data
 
 
-def text_data_fixed_split(args, data):
+def text_fixed_data_split(args, data):
     """학습 데이터를 학습/검증 데이터로 나누어 추가한 후 반환합니다."""
     return basic_data_split(args, data)
 
 
-def text_data_fixed_loader(args, data):
+def text_fixed_data_loader(args, data):
     """
     Parameters
     ----------
