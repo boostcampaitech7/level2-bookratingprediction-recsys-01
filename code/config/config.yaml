@@ -52,32 +52,32 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         pretrained_model: 'bert-base-uncased'
         vector_create: False
     NFM: 
-        datatype: all               # basic, context, image, text 중 basic, context 가능
+        datatype: all               # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
     NFFM:
-        datatype: all               # basic, context, image, text 중 basic, context 가능
+        datatype: all               # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
     DeepFFM:
-        datatype: all               # basic, context, image, text 중 basic, context 가능
+        datatype: all               # context, context_image, text, all 중 context 가능
         embed_dim: 16               # sparse 벡터를 임베딩할 차원
         mlp_dims: [16, 32]          # MLP_Base의 히든 레이어 차원
         batchnorm: True             # MLP_Base에서 배치 정규화 사용 여부
         dropout: 0.2                # MLP_Base에서 드롭아웃 비율s
     DCNwithFFM:
-        datatype: context           # basic, context, image, text 중 basic, context 가능
-        dcn_embed_dim: 16   
-        ffm_embed_dim: 16
-        cross_layer_num: 3
-        mlp_dims: [16, 32]  
+        datatype: context           # context, context_image, text, all 중 context 가능
+        dcn_embed_dim: 16           # dcn 임베딩할 차원
+        ffm_embed_dim: 16           # ffm 임베딩할 차원
+        cross_layer_num: 3          # cross network layer 수
+        mlp_dims: [16, 32]          # mlp layer 차원 list
         batchnorm: True 
         dropout: 0.2
-    CatBoost:
+    CatBoost:                       # context, context_image, text, all 중 context 가능
         datatype: text    
         vector_create: False    
-        embed_dim: 16           
+        embed_dim: 16               # summary vector embedding 차원
         pretrained_model: 'bert-base-uncased'   # 텍스트 임베딩에 사용할 사전학습 모델
-        word_dim: 768
-        embed_module: 'Linear'
+        word_dim: 768               # embedding word 차원 수
+        embed_module: 'Linear'      # embedding 방법
         params: {'iterations': 62, 'loss_function':'RMSE', 
                 'task_type':'GPU', 'depth': 10, 'learning_rate': 0.09561643045825612, 
                 'l2_leaf_reg': 6.433777066156716}
