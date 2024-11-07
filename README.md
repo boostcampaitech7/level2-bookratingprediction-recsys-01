@@ -114,8 +114,21 @@
 3. Upload sample_submission.csv at /data directory
 ```bash
 # NCF with CNN
-$ python code/main.py —config code/config/config.yaml —device cuda —model NCF —seed 42 —metrics "['RMSELoss']" -w True
+$ python main.py —config config/config.yaml —device cuda —m NCF —seed 42 —metrics "['RMSELoss']" -w True
+
 # CVAE
 $ python main.py  -c config/config.yaml  -m CVAE  -w True  -r CVAE_test
+
+# NFM
+$ python main.py  -c config/config.yaml  -m NFM  -w True 
+
+# NFFM
+python main.py  -c config/config.yaml  -m NFFM  -w True 
+
+# DeepFFM
+python main.py  -c config/config.yaml  -m DeepFFM  -w True
+
+# CatBoost
+python main.py -c config/config.yaml -m CatBoost -w True
 ```
 
