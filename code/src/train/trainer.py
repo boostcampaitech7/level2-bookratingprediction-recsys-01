@@ -4,7 +4,7 @@ import torch
 from src.loss import loss as loss_module
 import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
-
+import pandas as pd
 
 METRIC_NAMES = {
     'RMSELoss': 'RMSE',
@@ -18,12 +18,17 @@ def train(args, model, dataloader, logger, setting):
                     'book_title', 'book_author_preprocessing', 'isbn_country', 'isbn_book', 'isbn_publisher',
                     'publisher_preprocessing', 'language', 'category_preprocessing']
         embedding_features = ['user_summary_merge_vector', 'book_summary_vector']
-        print(model)
-        model.fit(X=dataloader['X_train'], y=dataloader['y_train'],
-                cat_features=cat_features, embedding_features=embedding_features 
+
+        X_all = pd.concat([dataloader['X_train'], dataloader['X_valid']], axis=0)
+        y_all = pd.concat([dataloader['y_train'], dataloader['y_valid']], axis=0)
+
+    
+        model.cbr.fit(X_all, y_all,
+                cat_features=cat_features, embedding_features=embedding_features,
+                verbose = False
         )
 
-        return model
+        return model.cbr
         
     if args.wandb:
         import wandb

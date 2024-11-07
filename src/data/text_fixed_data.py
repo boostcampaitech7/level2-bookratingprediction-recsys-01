@@ -184,9 +184,7 @@ def text_fixed_data_loader(args, data):
                                 data['test']['book_summary_vector'].values,
                                 )
     if args.ML:
-        data_ = {}
-        data_['X_train'], data_['y_train'], data_['X_valid'], data_['y_valid'], data_['test'] = data['X_train'], data['y_train'], data['X_valid'], data['y_valid'], data['test']
-        return data_
+        return data
 
     train_dataloader = DataLoader(train_dataset, batch_size=args.dataloader.batch_size, shuffle=args.dataloader.shuffle, num_workers=args.dataloader.num_workers)
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.dataloader.batch_size, shuffle=False, num_workers=args.dataloader.num_workers) if args.dataset.valid_ratio != 0 else None

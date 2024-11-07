@@ -8,76 +8,75 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from catboost import CatBoostRegressor, cv, Pool
 import sys
-sys.path.append("/data/ephemeral/home/code/src")
+import sys
+sys.path.append("./src")
 from utils import Setting
 from data.text_fixed_data import text_fixed_data_load, text_fixed_data_loader, text_fixed_data_split
-from loss import RMSELoss
+from loss import loss as loss_module
 
 
 
 class CatBoostRegression():
-    def __init__(self, args):
-        self.args = args
-        self.model_args = args.model_args.CatBoost
-        
-        data = text_fixed_data_load(args)
-        self.data_ = text_fixed_data_split(args, data)       
+    def __init__(self, args, data):
+        self.cbr = CatBoostRegressor(**args.model_args[args.model].params)
+        self.data = data
+        self.loss_fn = getattr(loss_module, args.loss)().to(args.device)
 
-        print(self.data_['train'])
-        print(self.data_['train'].columns)
+  
         if args.model_args[args.model].embed_module=='PCA':
             # PCA를 이용하여 16차원으로 축소
             pca = PCA(n_components=16)
-            for df in [self.data_['X_train'], self.data_['X_valid'], self.data_['test']]:
+            for df in [self.data['X_train'], self.data['X_valid'], self.data['test']]:
                 for vector in ['user_summary_merge_vector', 'book_summary_vector']:
                     embeddings = pca.fit_transform(np.stack(df[vector]))
                     df[vector] = list(embeddings)
         else:
             # nn.Linear module 이용하여 16차원으로 축소
-            linear = nn.Linear(self.model_args.word_dim, self.model_args.embed_dim)
-            for df in [self.data_['X_train'], self.data_['X_valid'], self.data_['test']]:
+            linear = nn.Linear(args.model_args[args.model].word_dim, args.model_args[args.model].embed_dim)
+            for df in [self.data['X_train'], self.data['X_valid'], self.data['test']]:
                 for vector in ['user_summary_merge_vector', 'book_summary_vector']:
                     embeddings = linear(torch.Tensor(np.stack(df[vector])))
                     df[vector] = list(embeddings.detach())
 
 
 
-    def fit(self,cat_features, embedding_features, loss_fn):
-        cbr = CatBoostRegressor(**self.model_args.params)
-        cbr.fit(X=self.data_['X_train'], y=self.data_['y_train'], 
+    def fit(self, cat_features, embedding_features):
+        self.cbr.fit(X=self.data['X_train'], y=self.data['y_train'], 
             cat_features=cat_features, embedding_features=embedding_features, 
-            eval_set=(self.data_['X_valid'], self.data_['y_valid']))
+            eval_set=(self.data['X_valid'], self.data['y_valid']))
     
-        y_hat = cbr.predict(data=self.data_['X_valid'])
-        loss = loss_fn(self.data_['y_valid'], y_hat)
+        y_hat = self.cbr.predict(data=self.data['X_valid'])
+        loss = self.loss_fn(self.data['y_valid'].float(), y_hat)
 
         msg = ''
         msg += f'\n\tValid RMSE Loss : {loss:.3f}'
 
-        return 
+        return msg
         
 
-        
     def fit_all(self,cat_features, embedding_features):
-        X_all = pd.concat([self.data_['X_train'], self.data_['X_valid']], axis=0)
-        y_all = pd.concat([self.data_['y_train'], self.data_['y_valid']], axis=0)
+        X_all = pd.concat([self.data['X_train'], self.data['X_valid']], axis=0)
+        y_all = pd.concat([self.data['y_train'], self.data['y_valid']], axis=0)
         
-        self.cbr = CatBoostRegressor(**self.model_args.params)
+        self.cbr = CatBoostRegressor(**args.model_args[args.model].params)
         self.cbr.fit(X_all, y_all,
                 cat_features=cat_features, 
                 embedding_features=embedding_features,
                 verbose=False)
     
-    def predict(self):
+    
+    def prediction(self):
         setting = Setting()
 
-        preds = self.cbr.predict(data=self.data_['test'])
+        preds = self.cbr.predict(data=self.data['test'])
         submission = pd.read_csv(self.args.dataset.data_path + 'sample_submission.csv')
         submission['rating'] = preds
 
         filename = setting.get_submit_filename(self.args)
         print(f'Save Predict: {filename}')
         submission.to_csv(filename, index=False)
+        
+        
 
 if __name__ == '__main__':
     ######################## BASIC ENVIRONMENT SETUP
@@ -135,7 +134,13 @@ if __name__ == '__main__':
                     'publisher_preprocessing', 'language', 'category_preprocessing']
     embedding_features = ['user_summary_merge_vector', 'book_summary_vector']
 
-    print("fitting")  
+    print("fitting") 
+    
+    # valid loss fitting을 확인하고 싶으면 아래의 코드로 실행 
+    # loss_name = catboost.fit(cat_features=cat_features, embedding_features=embedding_features)
+    # print(loss_name)
+    
+    # all data에 대해 fit한 뒤 inference 추출을 위해서는 아래 코드로 실행
     catboost.fit_all(cat_features=cat_features, embedding_features=embedding_features)
     
     print("prediction")
