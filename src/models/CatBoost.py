@@ -11,6 +11,9 @@ import sys
 sys.path.append("/data/ephemeral/home/code/src")
 from utils import Setting
 from data.text_fixed_data import text_fixed_data_load, text_fixed_data_loader, text_fixed_data_split
+from loss import RMSELoss
+
+
 
 class CatBoostRegression():
     def __init__(self, args):
@@ -37,11 +40,23 @@ class CatBoostRegression():
                     embeddings = linear(torch.Tensor(np.stack(df[vector])))
                     df[vector] = list(embeddings.detach())
 
-    def fit(self,cat_features, embedding_features):
+
+
+    def fit(self,cat_features, embedding_features, loss_fn):
         cbr = CatBoostRegressor(**self.model_args.params)
         cbr.fit(X=self.data_['X_train'], y=self.data_['y_train'], 
             cat_features=cat_features, embedding_features=embedding_features, 
             eval_set=(self.data_['X_valid'], self.data_['y_valid']))
+    
+        y_hat = cbr.predict(data=self.data_['X_valid'])
+        loss = loss_fn(self.data_['y_valid'], y_hat)
+
+        msg = ''
+        msg += f'\n\tValid RMSE Loss : {loss:.3f}'
+
+        return 
+        
+
         
     def fit_all(self,cat_features, embedding_features):
         X_all = pd.concat([self.data_['X_train'], self.data_['X_valid']], axis=0)
