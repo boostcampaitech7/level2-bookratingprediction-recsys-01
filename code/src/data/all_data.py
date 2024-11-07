@@ -7,36 +7,9 @@ from torchvision.transforms import v2
 import torch
 from torch.utils.data import DataLoader, Dataset
 from .basic_data import basic_data_split
+from .handler.context_handling import BookProcessor, UserProcessor
+from .handler.image_handling import ImageProcessor
 
-def str2list(x: str) -> list:
-    '''문자열을 리스트로 변환하는 함수'''
-    return x[1:-1].split(', ')
-
-
-def split_location(x: str) -> list:
-    '''
-    Parameters
-    ----------
-    x : str
-        location 데이터
-
-    Returns
-    -------
-    res : list
-        location 데이터를 나눈 뒤, 정제한 결과를 반환합니다.
-        순서는 country, state, city, ... 입니다.
-    '''
-    res = x.split(',')
-    res = [i.strip().lower() for i in res]
-    res = [regex.sub(r'[^a-zA-Z/ ]', '', i) for i in res]  # remove special characters
-    res = [i if i not in ['n/a', ''] else np.nan for i in res]  # change 'n/a' into NaN
-    res.reverse()  # reverse the list to get country, state, city, ... order
-
-    for i in range(len(res)-1, 0, -1):
-        if (res[i] in res[:i]) and (not pd.isna(res[i])):  # remove duplicated values if not NaN
-            res.pop(i)
-
-    return res
 
 
 def process_context_data(users, books):
@@ -64,45 +37,37 @@ def process_context_data(users, books):
         test 데이터
     """
 
-    users_ = users.copy()
-    books_ = books.copy()
+    # feature engineering
+    book_df = books.copy()
+    user_df = users.copy()
 
-    # 데이터 전처리 (전처리는 각자의 상황에 맞게 진행해주세요!)
-    books_['category'] = books_['category'].apply(lambda x: str2list(x)[0] if not pd.isna(x) else np.nan)
-    books_['language'] = books_['language'].fillna(books_['language'].mode()[0])
-    books_['publication_range'] = books_['year_of_publication'].apply(lambda x: x // 10 * 10)  # 1990년대, 2000년대, 2010년대, ...
+    book_processor = BookProcessor(book_df)
+    book_df = book_processor.final_process()
 
-    users_['age'] = users_['age'].fillna(users_['age'].mode()[0])
-    users_['age_range'] = users_['age'].apply(lambda x: x // 10 * 10)  # 10대, 20대, 30대, ...
+    user_processor = UserProcessor(user_df)
+    user_df = user_processor.final_process()
 
-    users_['location_list'] = users_['location'].apply(lambda x: split_location(x)) 
-    users_['location_country'] = users_['location_list'].apply(lambda x: x[0])
-    users_['location_state'] = users_['location_list'].apply(lambda x: x[1] if len(x) > 1 else np.nan)
-    users_['location_city'] = users_['location_list'].apply(lambda x: x[2] if len(x) > 2 else np.nan)
-    for idx, row in users_.iterrows():
-        if (not pd.isna(row['location_state'])) and pd.isna(row['location_country']):
-            fill_country = users_[users_['location_state'] == row['location_state']]['location_country'].mode()
-            fill_country = fill_country[0] if len(fill_country) > 0 else np.nan
-            users_.loc[idx, 'location_country'] = fill_country
-        elif (not pd.isna(row['location_city'])) and pd.isna(row['location_state']):
-            if not pd.isna(row['location_country']):
-                fill_state = users_[(users_['location_country'] == row['location_country']) 
-                                    & (users_['location_city'] == row['location_city'])]['location_state'].mode()
-                fill_state = fill_state[0] if len(fill_state) > 0 else np.nan
-                users_.loc[idx, 'location_state'] = fill_state
-            else:
-                fill_state = users_[users_['location_city'] == row['location_city']]['location_state'].mode()
-                fill_state = fill_state[0] if len(fill_state) > 0 else np.nan
-                fill_country = users_[users_['location_city'] == row['location_city']]['location_country'].mode()
-                fill_country = fill_country[0] if len(fill_country) > 0 else np.nan
-                users_.loc[idx, 'location_country'] = fill_country
-                users_.loc[idx, 'location_state'] = fill_state
+    return user_df, book_df
 
-               
+
+def process_img_data(books, args):
+    """
+    Parameters
+    ----------
+    books : pd.DataFrame
+        책 정보에 대한 데이터 프레임을 입력합니다.
     
-    users_ = users_.drop(['location'], axis=1)
+    Returns
+    -------
+    books_ : pd.DataFrame
+        이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
+    """
+    books_ = books.copy()
+    image_processor = ImageProcessor(books_, args.model_args[args.model].img_size)
+    books_ = image_processor.process_img_data()
 
-    return users_, books_
+    return books_
+
 
 class Image_Dataset(Dataset):
     def __init__(self, user_book_vector, img_vector, rating=None):
@@ -133,53 +98,6 @@ class Image_Dataset(Dataset):
                 }
 
 
-def image_vector(path, img_size):
-    """
-    Parameters
-    ----------
-    path : str
-        이미지가 존재하는 경로를 입력합니다.
-
-    Returns
-    -------
-    img_fe : np.ndarray
-        이미지를 벡터화한 결과를 반환합니다.
-        베이스라인에서는 grayscale일 경우 RGB로 변경한 뒤, img_size x img_size 로 사이즈를 맞추어 numpy로 반환합니다.
-    """
-    img = Image.open(path)
-    transform = v2.Compose([
-        v2.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x),
-        v2.Resize((img_size, img_size)),
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    return transform(img).numpy()
-
-
-def process_img_data(books, args):
-    """
-    Parameters
-    ----------
-    books : pd.DataFrame
-        책 정보에 대한 데이터 프레임을 입력합니다.
-    
-    Returns
-    -------
-    books_ : pd.DataFrame
-        이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
-    """
-    books_ = books.copy()
-    books_['img_path'] = books_['img_path'].apply(lambda x: f'./data/{x}')
-    img_vecs = []
-    for idx in tqdm(books_.index):
-        img_vec = image_vector(books_.loc[idx, 'img_path'], args.model_args[args.model].img_size)
-        img_vecs.append(img_vec)
-
-    books_['img_vector'] = img_vecs
-
-    return books_
 
 
 def all_data_load(args):
