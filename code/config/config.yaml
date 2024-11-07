@@ -21,7 +21,7 @@ run_name: 'jay : context, image NCF'
 
 model_args:     # model에 해당하는 파라미터만 실질적으로 사용됩니다.
     NCF:
-        datatype: all   # basic, context, image, text 중 basic, context 가능
+        datatype: context_image
         embed_dim: 32       # sparse 벡터를 임베딩할 차원
         mlp_dims: [32, 64]  # MLP_Base의 히든 레이어 차원
         batchnorm: True    # MLP_Base에서 배치 정규화 사용 여부
