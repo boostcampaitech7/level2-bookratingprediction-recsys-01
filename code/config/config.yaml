@@ -28,7 +28,6 @@ model_args:
         padding: 1                  # CNN_Base에서 사용할 각 레이어의 패딩
         cnn_batchnorm: True        # CNN_Base에서 배치 정규화 사용 여부
         cnn_dropout: 0.2            # CNN_Base에서 드롭아웃 비율
-        mlp_dims: [16, 32]          # MLP_Base의 히든 레이어 차원
         batchnorm: True        # MLP_Base에서 배치 정규화 사용 여부
         dropout: 0.2
         word_dim: 768

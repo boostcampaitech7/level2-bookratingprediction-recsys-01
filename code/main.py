@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
-from src.utils import Logger, Setting
+from src.utils import Logger, Setting, train_valid_split
 import src.data as data_module
 from src.train import train, test
 import src.models as model_module
@@ -23,13 +23,8 @@ def main(args, wandb=None):
     print(f'--------------- {args.model} Load Data ---------------')
     data = data_load_fn(args)
 
-    # CVAE 모델을 사용할 경우 : num_items 인자 추가
-    if args.model == 'CVAE':
-        num_items = pd.concat([data['train'], data['test']])['isbn'].nunique()
-        args.model_args[args.model]['num_items'] = num_items
-
     print(f'--------------- {args.model} Train/Valid Split ---------------')
-    data = data_split_fn(args, data)
+    data = train_valid_split(args, data)
     data = data_loader_fn(args, data)
 
 
